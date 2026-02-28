@@ -48,22 +48,22 @@ const BannerCarousel = () => {
   }, [images.length]);
 
   return (
-    <div className="relative w-full max-w-md mx-auto aspect-[21/9] overflow-hidden rounded-2xl shadow-md mb-4 mt-2">
-      <AnimatePresence mode="wait">
+    <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-transparent overflow-hidden mb-4 mt-4 shadow-sm">
+      <AnimatePresence>
         <motion.img
           key={currentIndex}
           src={images[currentIndex]}
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.8 }}
-          className="absolute inset-0 w-full h-full object-cover"
+          transition={{ duration: 1, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full object-contain"
           alt={`Banner ${currentIndex + 1}`}
         />
       </AnimatePresence>
-      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10">
+      <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 z-10 pb-2">
         {images.map((_, idx) => (
-          <div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50'}`} />
+          <div key={idx} className={`h-2 rounded-full transition-all duration-500 ${idx === currentIndex ? 'bg-[#1E88E5] w-6' : 'bg-[#1E88E5]/30 w-2'}`} />
         ))}
       </div>
     </div>
