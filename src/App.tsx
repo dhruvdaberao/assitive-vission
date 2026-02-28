@@ -92,46 +92,49 @@ export default function App() {
             while (isActive && !validChoice && retries < 3) {
               try {
                 const numStr = await speakAndListen("Say 1 for Hindi. Say 2 for Marathi. Say 3 for English. Say 4 for Tamil. Say 5 for Telugu. Say 0 to cancel.");
-                console.log("Language spoken input:", numStr);
-                const num = parseSpokenNumber(numStr);
+                const spoken = numStr.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+                console.log("Language spoken input:", spoken);
 
                 let newLang = '';
-                if (num === 1) newLang = 'Hindi';
-                else if (num === 2) newLang = 'Marathi';
-                else if (num === 3) newLang = 'English';
-                else if (num === 4) newLang = 'Tamil';
-                else if (num === 5) newLang = 'Telugu';
-                else if (num === 0) {
+
+                if (spoken.match(/\b(1|one|ek|एक|first|won|wan|hindi)\b/)) newLang = 'Hindi';
+                else if (spoken.match(/\b(2|two|do|दो|second|too|to|marathi)\b/)) newLang = 'Marathi';
+                else if (spoken.match(/\b(3|three|teen|तीन|third|tree|english)\b/)) newLang = 'English';
+                else if (spoken.match(/\b(4|four|char|चार|fourth|for|tamil)\b/)) newLang = 'Tamil';
+                else if (spoken.match(/\b(5|five|panch|पांच|fifth|telugu)\b/)) newLang = 'Telugu';
+                else if (spoken.match(/\b(0|zero|shunya|शून्य|cancel|stop|exit)\b/)) {
                   validChoice = true;
                   await speak("Cancelled.");
                   break;
                 }
 
                 if (newLang) {
-                  console.log("Language changed to:", newLang);
+                  console.log("Language successfully matched to:", newLang);
                   setCurrentLanguage(newLang);
                   localStorage.setItem('appLanguage', newLang);
 
                   // Forcefully stop listening to prevent re-trigger loop
                   stopListening();
 
-                  // Wait for the new target language mapping exactly, and manually set it for the final speech output
                   const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
 
-                  // Add a small delay for state propagation, then immediately speak the confirmation
-                  await new Promise(r => setTimeout(r, 500));
+                  // Small delay for React state propagation
+                  await new Promise(r => setTimeout(r, 600));
                   await speak(confirmText);
 
                   validChoice = true;
                 } else {
+                  console.warn("Could not parse language input:", spoken);
                   retries++;
-                  if (retries < 3) await speak("Invalid selection. Please say a number between 1 and 5.");
+                  if (retries < 3) {
+                    await speak("I didn't catch that. Please say the number or the language name.");
+                  }
                 }
               } catch (e) {
+                console.error("Speech recognition error during language selection:", e);
                 retries++;
-                // Add a slightly longer timeout before retry to ensure the previous logic settles
-                await new Promise(r => setTimeout(r, 500));
-                if (isActive && retries < 3) await speak("Please repeat.");
+                await new Promise(r => setTimeout(r, 600));
+                if (isActive && retries < 3) await speak("Please repeat your choice.");
               }
             }
             if (!validChoice && isActive) {

@@ -1,59 +1,64 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>EchoSight</title>
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#ffffff" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="preload" as="image" href="/icon.svg" />
-    <style>
-      html, body {
-        background-color: #ffffff;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-      }
-      #splash-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: #ffffff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease-out;
-      }
-      #splash-screen img {
-        width: 120px;
-        height: 120px;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="splash-screen">
-      <img src="/icon.svg" alt="Assistive Vision Logo" />
-    </div>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
-      window.addEventListener('load', () => {
-        const splash = document.getElementById('splash-screen');
-        if (splash) {
-          setTimeout(() => {
-            splash.style.opacity = '0';
-            setTimeout(() => splash.remove(), 500);
-          }, 100);
-        }
-      });
-    </script>
-  </body>
-</html>
 
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EchoSight</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/walking-stick.png" />
+  <link rel="icon" type="image/svg+xml" href="/walking-stick.png" />
+  <link rel="apple-touch-icon" href="/walking-stick.png" />
+  <link rel="preload" as="image" href="/walking-stick.png" />
+  <style>
+    html,
+    body {
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+
+    #splash-screen img {
+      width: 120px;
+      height: 120px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="splash-screen">
+    <img src="/walking-stick.png" alt="EchoSight Logo" />
+  </div>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    window.addEventListener('load', () => {
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        setTimeout(() => {
+          splash.style.opacity = '0';
+          setTimeout(() => splash.remove(), 500);
+        }, 100);
+      }
+    });
+  </script>
+</body>
+
+</html>
