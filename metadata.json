@@ -1,0 +1,9 @@
+{
+  "name": "Assistive Vision",
+  "description": "AI-Powered Voice Navigation & Object Detection App for Blind Users",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
