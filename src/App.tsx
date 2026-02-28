@@ -434,7 +434,7 @@ export default function App() {
       <div className="w-2/4 flex items-center justify-center gap-3 text-center">
         {!showBack && (
           <img
-            src="/walking-stick.png"
+            src="/eye.png"
             alt="App Logo"
             className="max-h-[44px] w-auto object-contain drop-shadow-md brightness-0 invert"
           />
