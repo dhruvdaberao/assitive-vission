@@ -38,11 +38,18 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
       }
 
       if (err.status === 429 || err.message?.includes('429') || err.message?.includes('quota')) {
-        return "TOKENS_FINISHED";
+        if (i < retries) {
+          const delay = 1000 * Math.pow(2, i); // Exponential Backoff: 1s -> 2s -> 4s
+          console.log(`429 Quota Exhausted: Retrying in ${delay / 1000}s...`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        } else {
+          return "SYSTEM_BUSY"; // Send unified failure signal to UI
+        }
       }
 
       if (i < retries) {
-        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        await new Promise(r => setTimeout(r, 1000));
         continue;
       }
 

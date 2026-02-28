@@ -241,10 +241,12 @@ export default function App() {
   // Welcome message
   useEffect(() => {
     const timer = setTimeout(() => {
-      speak(t('welcome_message', currentLanguage));
     }, 1000);
     return () => clearTimeout(timer);
   }, [speak, currentLanguage]);
+
+  // AI Quota Optimization: 3 Second Debouncer
+  const lastVisionCallRef = useRef<number>(0);
 
   // --- Page Lifecycle & Voice Prompts ---
   useEffect(() => {
@@ -312,6 +314,7 @@ export default function App() {
             else if (words.some(w => ['assamese', 'অসমীয়া', 'asamiya'].includes(w))) newLang = 'Assamese';
             else if (words.some(w => ['manipuri', 'মৈতৈ', 'meitei'].includes(w))) newLang = 'Manipuri';
             else if (words.some(w => ['bodo', 'बर'].includes(w))) newLang = 'Bodo';
+            else if (words.some(w => ['urdu', 'اردو'].includes(w))) newLang = 'Urdu';
             else if (words.some(w => ['cancel', 'stop', 'rad', 'रद्द'].includes(w))) {
               await speak(t('lang_cancelled', currentLanguage));
               setCurrentPage('home');
@@ -365,9 +368,19 @@ export default function App() {
   }, [currentPage]);
 
   // --- Feature Handlers ---
-  // Note: In production, these call our backend (e.g., POST /api/v1/vision/describe)
+  const checkThrottle = (): boolean => {
+    const now = Date.now();
+    if (now - lastVisionCallRef.current < 3000) {
+      console.log('Frame throttled (cooldown active).');
+      return false;
+    }
+    lastVisionCallRef.current = now;
+    return true;
+  };
+
   const handleDescribeScene = async () => {
     if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(t('status_analyzing', currentLanguage));
     try {
@@ -376,6 +389,10 @@ export default function App() {
         const response = await analyzeScene(image, `Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences. Reply ONLY in the ${currentLanguage} language.`);
         if (response === "TOKENS_FINISHED") {
           const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
           setStatus(warning);
           await speak(warning);
         } else {
@@ -393,6 +410,7 @@ export default function App() {
 
   const handleIdentifyCurrency = async () => {
     if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus("Identifying currency...");
     try {
@@ -401,6 +419,10 @@ export default function App() {
         const response = await analyzeScene(image, `Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'. Reply ONLY in the ${currentLanguage} language.`);
         if (response === "TOKENS_FINISHED") {
           const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
           setStatus(warning);
           await speak(warning);
         } else {
@@ -418,6 +440,7 @@ export default function App() {
 
   const handleFindObject = async (objName: string) => {
     if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(`Looking for ${objName}...`);
     try {
@@ -426,6 +449,10 @@ export default function App() {
         const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short. Reply ONLY in the ${currentLanguage} language.`);
         if (response === "TOKENS_FINISHED") {
           const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
           setStatus(warning);
           await speak(warning);
         } else {
@@ -443,6 +470,7 @@ export default function App() {
 
   const handleNavigate = async (dest: string) => {
     if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(`Navigating to ${dest}...`);
     try {
@@ -451,6 +479,10 @@ export default function App() {
         const response = await analyzeScene(image, `The user wants to navigate to: ${dest}. Describe the immediate path forward, identifying any obstacles, doors, or turns. Keep it under 2 sentences. Reply ONLY in the ${currentLanguage} language.`);
         if (response === "TOKENS_FINISHED") {
           const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
           setStatus(warning);
           await speak(warning);
         } else {
@@ -492,7 +524,7 @@ export default function App() {
             className="max-h-[44px] w-auto object-contain drop-shadow-md brightness-0 invert"
           />
         )}
-        <h1 className={`${showBack ? 'text-xl' : 'text-3xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`} style={{ fontFamily: "'Outfit', sans-serif" }}>
+        <h1 className={`${showBack ? 'text-xl' : 'text-3xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`} style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", fontWeight: 900 }}>
           {title.replace('EchoSight', 'Echo-Sight')}
         </h1>
       </div>
@@ -542,7 +574,7 @@ export default function App() {
       <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${bgClass}`}>
         <div className="flex flex-col items-center">
           <img src="/eye-padded.png" alt="Loading" className="w-24 h-24 mb-4 drop-shadow-lg object-contain animate-pulse" />
-          <p className="text-xl font-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>Echo-Sight</p>
+          <p className="text-xl font-bold" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", fontWeight: 800 }}>Echo-Sight</p>
           <div className="mt-4 w-6 h-6 border-4 border-current border-t-transparent rounded-full animate-spin opacity-50"></div>
         </div>
       </div>
@@ -585,8 +617,8 @@ export default function App() {
                 <AccessibleButton icon={<Bell size={36} />} label={t('btn_notify', currentLanguage) || "Notify Area"} onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 border-red-700 text-white" />
-                <AccessibleButton icon={<Info size={36} />} label="About Us" onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
-                <AccessibleButton icon={<HelpCircle size={36} />} label="How To Use" onActivate={() => { setCurrentPage('how-to-use'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Info size={36} />} label={t('btn_about', currentLanguage)} onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<HelpCircle size={36} />} label={t('btn_how_to_use', currentLanguage)} onActivate={() => { setCurrentPage('how-to-use'); }} speak={speak} color={cardClass} />
               </div>
             </div>
           </motion.div>
@@ -673,13 +705,13 @@ export default function App() {
 
         {currentPage === 'notify' && (
           <motion.div key="notify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex-1 flex flex-col ${bgClass}`}>
-            {renderHeader('Notify Contacts')}
+            {renderHeader(t('notify_header', currentLanguage))}
             <div className="flex-1 p-6 overflow-y-auto space-y-8 pb-20">
 
               {/* User Details Box */}
               <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-lg flex items-center gap-2"><MapIcon size={20} /> Journey Details</h3>
+                  <h3 className="font-bold text-lg flex items-center gap-2"><MapIcon size={20} /> {t('notify_details_title', currentLanguage)}</h3>
                   <button
                     onClick={() => {
                       setIsLocationSaved(!isLocationSaved);
@@ -691,12 +723,12 @@ export default function App() {
                     }}
                     className={`p-2 rounded-xl text-sm font-bold flex items-center gap-2 ${isLocationSaved ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'}`}
                   >
-                    {isLocationSaved ? <><Edit2 size={16} /> Edit</> : <><Save size={16} /> Save</>}
+                    {isLocationSaved ? <><Edit2 size={16} /> {t('notify_btn_edit', currentLanguage)}</> : <><Save size={16} /> {t('notify_btn_save', currentLanguage)}</>}
                   </button>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Traveler Name</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('notify_name_label', currentLanguage)}</label>
                     <input
                       type="text"
                       value={notifyName}
@@ -707,7 +739,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Destination Name</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('notify_dest_title', currentLanguage)}</label>
                     <input
                       type="text"
                       value={destination}
@@ -726,7 +758,7 @@ export default function App() {
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSearchLocation()}
-                      placeholder="Search for a location..."
+                      placeholder={t('notify_dest_label', currentLanguage)}
                       className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
                     />
                     <button
@@ -758,7 +790,7 @@ export default function App() {
                 {destCoords && (
                   <div className={`mt-4 p-3 rounded-xl border text-center transition-colors ${isLocationSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : `${inputClass}`}`}>
                     <h4 className="font-bold flex items-center justify-center gap-2">
-                      {isLocationSaved ? <>Tracking Active 🟢</> : <>Tracking Paused ⏸️</>}
+                      {isLocationSaved ? <>{t('notify_tracking_active', currentLanguage)} 🟢</> : <>Tracking Paused ⏸️</>}
                     </h4>
                     <p className="text-sm mt-1">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
                   </div>
@@ -767,7 +799,7 @@ export default function App() {
 
               {/* Number List Box */}
               <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><PhoneCall size={20} /> Broadcast Numbers</h3>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><PhoneCall size={20} /> {t('notify_contacts_title', currentLanguage)}</h3>
                 <div className="flex gap-2 mb-4">
                   <input
                     type="tel"
@@ -787,7 +819,7 @@ export default function App() {
                     }}
                     className="px-4 bg-emerald-600 text-white rounded-xl font-medium"
                   >
-                    Add
+                    {t('notify_add_btn', currentLanguage)}
                   </button>
                 </div>
 
@@ -812,8 +844,8 @@ export default function App() {
                     size={150}
                   />
                 </div>
-                <h3 className="font-bold text-lg flex items-center gap-2 justify-center"><QrCode size={20} /> Family Pairing</h3>
-                <p className="text-sm opacity-70 mt-2 mb-4">Guardians can scan this QR code to connect to the Twilio Sandbox.</p>
+                <h3 className="font-bold text-lg flex items-center gap-2 justify-center"><QrCode size={20} /> {t('notify_remote_title', currentLanguage)}</h3>
+                <p className="text-sm opacity-70 mt-2 mb-4">{t('notify_remote_sub', currentLanguage)}</p>
                 <input
                   type="text"
                   value={sandboxCode}
@@ -829,10 +861,10 @@ export default function App() {
 
         {currentPage === 'emergency' && (
           <motion.div key="emergency" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Emergency Info')}
+            {renderHeader(t('emergency_medical_title', currentLanguage))}
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Medical Details</h2>
+                <h2 className="text-2xl font-bold">{t('emergency_medical_title', currentLanguage)}</h2>
                 <button onClick={() => setIsEditingEmergency(!isEditingEmergency)} className={`p-2 rounded-full ${cardClass}`}>
                   {isEditingEmergency ? <Save size={20} /> : <Edit2 size={20} />}
                 </button>
@@ -840,7 +872,7 @@ export default function App() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium opacity-70 mb-1">Full Name</label>
+                  <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_name_label', currentLanguage)}</label>
                   {isEditingEmergency ? (
                     <input type="text" value={emergencyData.name} onChange={e => setEmergencyData({ ...emergencyData, name: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                   ) : (
@@ -849,7 +881,7 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Age</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_age_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
                       <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({ ...emergencyData, age: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
@@ -857,7 +889,7 @@ export default function App() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Blood Type</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_blood_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
                       <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({ ...emergencyData, bloodType: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
@@ -867,9 +899,9 @@ export default function App() {
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-[#1E88E5]/20 dark:border-[#42A5F5]/30">
-                  <h2 className="text-2xl font-bold mb-4">Emergency Contact</h2>
+                  <h2 className="text-2xl font-bold mb-4">{t('emergency_contact_title', currentLanguage)}</h2>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium opacity-70 mb-1">Contact Name</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cname_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
                       <input type="text" value={emergencyData.contactName} onChange={e => setEmergencyData({ ...emergencyData, contactName: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
@@ -877,7 +909,7 @@ export default function App() {
                     )}
                   </div>
                   <div className="mb-6">
-                    <label className="block text-sm font-medium opacity-70 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cphone_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
                       <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({ ...emergencyData, contactPhone: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
@@ -891,7 +923,7 @@ export default function App() {
                       className="flex items-center justify-center p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
                     >
                       <PhoneCall className="mr-3" size={28} />
-                      Call {emergencyData.contactName}
+                      {t('emergency_call_btn', currentLanguage)} {emergencyData.contactName}
                     </a>
                   )}
                 </div>
@@ -902,75 +934,75 @@ export default function App() {
 
         {currentPage === 'permissions' && (
           <motion.div key="permissions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Permissions')}
+            {renderHeader(t('page_perm_title', currentLanguage))}
             <div className="flex-1 p-6">
-              <p className="text-lg mb-6 opacity-80">Manage application permissions required for core features.</p>
+              <p className="text-lg mb-6 opacity-80">{t('page_perm_desc', currentLanguage)}</p>
               <div className="space-y-4">
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <Eye className="text-blue-500" />
-                    <span className="font-medium">Camera</span>
+                    <span className="font-medium">{t('page_perm_camera', currentLanguage)}</span>
                   </div>
                   {sysPermissions.camera === 'granted' ? (
-                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
                   ) : (
-                    <button onClick={() => handleRequestSysPermission('camera')} className="text-blue-500 text-sm font-bold border border-blue-500 px-3 py-1 rounded-full hover:bg-blue-50">Request / Off</button>
+                    <button onClick={() => handleRequestSysPermission('camera')} className="text-blue-500 text-sm font-bold border border-blue-500 px-3 py-1 rounded-full hover:bg-blue-50">{t('page_perm_request', currentLanguage)}</button>
                   )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <Mic className="text-purple-500" />
-                    <span className="font-medium">Microphone</span>
+                    <span className="font-medium">{t('page_perm_mic', currentLanguage)}</span>
                   </div>
                   {sysPermissions.mic === 'granted' ? (
-                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
                   ) : (
-                    <button onClick={() => handleRequestSysPermission('microphone')} className="text-purple-500 text-sm font-bold border border-purple-500 px-3 py-1 rounded-full hover:bg-purple-50">Request / Off</button>
+                    <button onClick={() => handleRequestSysPermission('microphone')} className="text-purple-500 text-sm font-bold border border-purple-500 px-3 py-1 rounded-full hover:bg-purple-50">{t('page_perm_request', currentLanguage)}</button>
                   )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <MapIcon className="text-emerald-500" />
-                    <span className="font-medium">Location</span>
+                    <span className="font-medium">{t('page_perm_location', currentLanguage)}</span>
                   </div>
                   {sysPermissions.location === 'granted' ? (
-                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
                   ) : (
-                    <button onClick={() => handleRequestSysPermission('geolocation')} className="text-emerald-500 text-sm font-bold border border-emerald-500 px-3 py-1 rounded-full hover:bg-emerald-50">Request / Off</button>
+                    <button onClick={() => handleRequestSysPermission('geolocation')} className="text-emerald-500 text-sm font-bold border border-emerald-500 px-3 py-1 rounded-full hover:bg-emerald-50">{t('page_perm_request', currentLanguage)}</button>
                   )}
                 </div>
               </div>
               <p className="text-sm mt-6 opacity-60 text-center">
-                Permissions can be fully managed in your device's system settings.
+                {t('page_perm_footer', currentLanguage)}
               </p>
             </div>
           </motion.div>
         )}
         {currentPage === 'about' && (
           <motion.div key="about" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('About EchoSight')}
+            {renderHeader(t('page_about_title', currentLanguage))}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Overview</h2>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_overview', currentLanguage)}</h2>
                 <p className="text-lg leading-relaxed opacity-90">
-                  EchoSight is an AI-powered accessibility application designed to assist visually impaired individuals in navigating and understanding their surroundings.
+                  {t('page_about_overview_text', currentLanguage)}
                 </p>
               </div>
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Features</h2>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_features', currentLanguage)}</h2>
                 <ul className="list-disc pl-5 space-y-2 text-lg opacity-90">
-                  <li>Scene Description using AI</li>
-                  <li>Currency Detection</li>
-                  <li>Smart Navigation</li>
-                  <li>Family Safety Notifications</li>
-                  <li>WhatsApp Alert System</li>
-                  <li>Real-time Location Tracking</li>
+                  <li>{t('page_about_feature_1', currentLanguage)}</li>
+                  <li>{t('page_about_feature_2', currentLanguage)}</li>
+                  <li>{t('page_about_feature_3', currentLanguage)}</li>
+                  <li>{t('page_about_feature_4', currentLanguage)}</li>
+                  <li>{t('page_about_feature_5', currentLanguage)}</li>
+                  <li>{t('page_about_feature_6', currentLanguage)}</li>
                 </ul>
               </div>
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Mission</h2>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_mission', currentLanguage)}</h2>
                 <p className="text-lg leading-relaxed font-medium italic opacity-90">
-                  "To empower independence and safety for visually impaired users using intelligent technology."
+                  {t('page_about_mission_text', currentLanguage)}
                 </p>
               </div>
             </div>
@@ -979,32 +1011,32 @@ export default function App() {
 
         {currentPage === 'how-to-use' && (
           <motion.div key="how-to-use" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('How To Use')}
+            {renderHeader(t('page_htu_title', currentLanguage))}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Eye size={24} /> Scene Description</h2>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Eye size={24} /> {t('page_htu_scene', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
-                  Tap the "Describe Area" button. Point your camera forward, and the AI will analyze objects, lighting, and layout, returning detailed voice feedback of your surroundings.
+                  {t('page_htu_scene_text', currentLanguage)}
                 </p>
               </div>
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><MapIcon size={24} /> Navigation</h2>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><MapIcon size={24} /> {t('page_htu_nav', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
-                  Tap "Navigate". Speak your desired destination. The intelligent AI will scan your current visual field and guide your steps around obstacles toward your goal in real-time.
+                  {t('page_htu_nav_text', currentLanguage)}
                 </p>
               </div>
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Bell size={24} /> Notify Feature</h2>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Bell size={24} /> {t('page_htu_notify', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
-                  1. Add trusted WhatsApp numbers.<br />
-                  2. Search for your remote destination on the map and tap "Save" to lock tracking.<br />
-                  3. The system will automatically live-update your loved ones as you move.
+                  {t('page_htu_notify_text_1', currentLanguage)}<br />
+                  {t('page_htu_notify_text_2', currentLanguage)}<br />
+                  {t('page_htu_notify_text_3', currentLanguage)}
                 </p>
               </div>
               <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
-                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-500"><HeartPulse size={24} /> SOS</h2>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-500"><HeartPulse size={24} /> {t('page_htu_sos', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
-                  In case of danger, Double-Tap the Emergency button. Your device will immediately flash an alert, dial your primary emergency contact line, and sound an alarm.
+                  {t('page_htu_sos_text', currentLanguage)}
                 </p>
               </div>
             </div>

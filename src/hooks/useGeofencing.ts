@@ -75,39 +75,50 @@ export function useGeofencing(config: GeofenceConfig) {
     };
 
     useEffect(() => {
-        if (!config.enabled || !navigator.geolocation) return;
+        if (!config.enabled || !navigator.geolocation) {
+            setCurrentDistance(null);
+            return;
+        }
 
-        const watchId = navigator.geolocation.watchPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                const dist = getDistance(latitude, longitude, config.destinationLat, config.destinationLng);
-                setCurrentDistance(dist);
+        let watchId: number;
+        // Optimization: dynamically switch accuracy based on calculated distance
+        const isNearDestination = currentDistance !== null && currentDistance <= 200;
 
-                // Geofencing Logic
-                if (dist <= REACHED_RADIUS && !hasReachedRef.current) {
-                    hasReachedRef.current = true;
-                    setHasReached(true);
-                    sendWhatsApp('reached', latitude, longitude);
-                } else if (dist > EXIT_RADIUS && hasReachedRef.current) {
-                    hasReachedRef.current = false;
-                    setHasReached(false);
-                    sendWhatsApp('left', latitude, longitude);
-                }
-            },
-            (error) => {
-                console.error("Geolocation watch fault:", error);
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 5000,
-                timeout: 10000
+        const handlePosition = (position: GeolocationPosition) => {
+            const { latitude, longitude } = position.coords;
+            const dist = getDistance(latitude, longitude, config.destinationLat, config.destinationLng);
+            setCurrentDistance(dist);
+
+            // Geofencing Logic
+            if (dist <= REACHED_RADIUS && !hasReachedRef.current) {
+                hasReachedRef.current = true;
+                setHasReached(true);
+                sendWhatsApp('reached', latitude, longitude);
+            } else if (dist > EXIT_RADIUS && hasReachedRef.current) {
+                hasReachedRef.current = false;
+                setHasReached(false);
+                sendWhatsApp('left', latitude, longitude);
             }
-        );
+        };
+
+        const handleError = (error: GeolocationPositionError) => {
+            console.error("Geolocation watch fault:", error);
+        };
+
+        const options: PositionOptions = {
+            enableHighAccuracy: isNearDestination, // High accuracy only when within 200 meters
+            maximumAge: isNearDestination ? 5000 : 10000,
+            timeout: 15000
+        };
+
+        watchId = navigator.geolocation.watchPosition(handlePosition, handleError, options);
 
         return () => {
-            navigator.geolocation.clearWatch(watchId);
+            if (watchId !== undefined) {
+                navigator.geolocation.clearWatch(watchId);
+            }
         };
-    }, [config.enabled, config.destinationLat, config.destinationLng, config.destinationName, config.notifyNumbers, config.userName]);
+    }, [config.enabled, config.destinationLat, config.destinationLng, config.destinationName, config.notifyNumbers, config.userName, currentDistance !== null && currentDistance <= 200]);
 
     return { currentDistance, hasReached };
 }

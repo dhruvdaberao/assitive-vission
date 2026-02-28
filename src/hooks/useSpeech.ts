@@ -15,7 +15,8 @@ export const LANGUAGE_CONFIG = {
   'Odia': { code: 'od-IN', voice: 'meera', confirmText: 'ଆପଣଙ୍କର ଭାଷା ପସନ୍ଦ ସଂରକ୍ଷଣ କରାଯାଇଛି |' },
   'Assamese': { code: 'as-IN', voice: 'meera', confirmText: 'আপোনাৰ ভাষা পছন্দ সংৰক্ষণ কৰা হৈছে।' },
   'Manipuri': { code: 'mni-IN', voice: 'meera', confirmText: 'নহাক্কী লোনগী পামজবা অদু সেভ তৌরে।' },
-  'Bodo': { code: 'brx-IN', voice: 'meera', confirmText: 'नोंथांनि रावखौ रैखा खालामनाय जाबाय।' }
+  'Bodo': { code: 'brx-IN', voice: 'meera', confirmText: 'नोंथांनि रावखौ रैखा खालामनाय जाबाय।' },
+  'Urdu': { code: 'ur-IN', voice: 'meera', confirmText: 'آپ کی زبان کی ترجیح محفوظ کر لی گئی ہے۔' }
 };
 
 export function parseSpokenNumber(text: string): number | null {
