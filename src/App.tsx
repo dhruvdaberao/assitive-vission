@@ -53,8 +53,13 @@ export default function App() {
   }, [currentPage, currentLanguage]);
 
   // Feature specific states
-  const [destination, setDestination] = useState('');
-  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(null);
+  const [destination, setDestination] = useState(() => localStorage.getItem('destination') || '');
+  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem('destCoords');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [targetObject, setTargetObject] = useState('');
 
   // Emergency feature states
@@ -79,7 +84,12 @@ export default function App() {
   const [sandboxCode, setSandboxCode] = useState(() => localStorage.getItem('sandboxCode') || '');
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(() => {
+    try {
+      const saved = localStorage.getItem('mapCenter');
+      return saved ? JSON.parse(saved) : [19.0760, 72.8777];
+    } catch { return [19.0760, 72.8777]; }
+  });
 
   const handleSearchLocation = async () => {
     if (!searchQuery.trim()) return;
@@ -113,6 +123,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('sandboxCode', sandboxCode);
   }, [sandboxCode]);
+
+  useEffect(() => {
+    localStorage.setItem('destination', destination);
+  }, [destination]);
+
+  useEffect(() => {
+    localStorage.setItem('destCoords', JSON.stringify(destCoords));
+  }, [destCoords]);
+
+  useEffect(() => {
+    localStorage.setItem('mapCenter', JSON.stringify(mapCenter));
+  }, [mapCenter]);
 
   // Geofencing integration
   const { currentDistance, hasReached } = useGeofencing({
