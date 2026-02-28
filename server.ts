@@ -126,34 +126,52 @@ async function startServer() {
 
     try {
       const client = twilio(sid, auth);
-      const { type, userName, destinationName, receiverNumber, currentLat, currentLng } = req.body;
+      const { type, userName, destinationName, notifyNumbers, currentLat, currentLng } = req.body;
 
-      if (!receiverNumber) {
-        return res.status(400).json({ error: "Receiver number required" });
+      if (!notifyNumbers || !Array.isArray(notifyNumbers) || notifyNumbers.length === 0) {
+        return res.status(400).json({ error: "At least one receiver number (`notifyNumbers` array) is required" });
       }
 
-      let message = "";
+      let baseMessage = "";
       if (type === "reached") {
-        message = `🟢 ${userName || "User"} has reached ${destinationName}.`;
+        baseMessage = `🟢 ${userName || "User"} has reached ${destinationName}.`;
       } else {
-        message = `🟡 ${userName || "User"} is out of ${destinationName} and is on the way.`;
+        baseMessage = `🟡 ${userName || "User"} is out of ${destinationName} and is on the way.`;
       }
 
       // Live Location Link
       if (currentLat && currentLng) {
         const mapsLink = `https://www.openstreetmap.org/?mlat=${currentLat}&mlon=${currentLng}`;
-        message += `\n📍 Live Location: ${mapsLink}`;
+        baseMessage += `\n📍 Live Location: ${mapsLink}`;
       }
 
-      await client.messages.create({
-        body: message,
-        from: `whatsapp:${sender}`,
-        to: `whatsapp:${receiverNumber}`
-      });
+      const results = [];
+      const errors = [];
 
-      res.status(200).json({ success: true });
+      // Loop through all provided numbers and send WhatsApp notifications concurrently
+      for (const number of notifyNumbers) {
+        try {
+          const message = await client.messages.create({
+            body: baseMessage,
+            from: `whatsapp:${sender}`,
+            to: `whatsapp:${number}`
+          });
+          results.push({ number, sid: message.sid, status: "sent" });
+        } catch (err: any) {
+          console.error(`Failed to send WhatsApp to ${number}:`, err?.message || err);
+          errors.push({ number, error: err?.message || "Unknown Twilio Error" });
+        }
+      }
+
+      // If every single number failed, return an error. Otherwise return 200 OK with partial failure context.
+      if (results.length === 0 && errors.length > 0) {
+        return res.status(500).json({ error: "Failed to send WhatsApp to all numbers.", details: errors });
+      }
+
+      return res.status(200).json({ success: true, sent: results.length, failed: errors.length, errors });
+
     } catch (error: any) {
-      console.error("Twilio WhatsApp Error:", error);
+      console.error("Twilio Initialization Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

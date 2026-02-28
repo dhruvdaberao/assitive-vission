@@ -9,7 +9,7 @@ interface GeofenceConfig {
     destinationLng: number;
     destinationName: string;
     userName: string;
-    receiverNumber: string;
+    notifyNumbers: string[];
     enabled: boolean;
 }
 
@@ -57,7 +57,7 @@ export function useGeofencing(config: GeofenceConfig) {
                     type,
                     userName: config.userName,
                     destinationName: config.destinationName,
-                    receiverNumber: config.receiverNumber,
+                    notifyNumbers: config.notifyNumbers,
                     currentLat: lat,
                     currentLng: lng
                 }),
@@ -107,7 +107,7 @@ export function useGeofencing(config: GeofenceConfig) {
         return () => {
             navigator.geolocation.clearWatch(watchId);
         };
-    }, [config.enabled, config.destinationLat, config.destinationLng, config.destinationName, config.receiverNumber, config.userName]);
+    }, [config.enabled, config.destinationLat, config.destinationLng, config.destinationName, config.notifyNumbers, config.userName]);
 
     return { currentDistance, hasReached };
 }

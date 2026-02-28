@@ -8,9 +8,10 @@ import { useCamera } from './hooks/useCamera';
 import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } from './hooks/useSpeech';
 // In a production app, this would call our custom backend, not Gemini directly.
 import { analyzeScene } from './services/gemini';
-import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2 } from 'lucide-react';
+import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { QRCodeSVG } from 'qrcode.react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -58,13 +59,18 @@ export default function App() {
     contactPhone: '+919876543210' // Must be E.164 format for WhatsApp
   });
 
+  // Notify feature states
+  const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
+  const [newNumber, setNewNumber] = useState('');
+  const [notifyName, setNotifyName] = useState('User');
+
   // Geofencing integration
   const { currentDistance, hasReached } = useGeofencing({
     destinationLat: destCoords?.lat ?? 0,
     destinationLng: destCoords?.lng ?? 0,
     destinationName: destination || 'Custom Location',
-    userName: emergencyData.name,
-    receiverNumber: emergencyData.contactPhone,
+    userName: notifyName, // Use the new Notify Name for location updates
+    notifyNumbers: notifyNumbers.length > 0 ? notifyNumbers : [emergencyData.contactPhone], // Fallback to emergency contact if empty
     enabled: currentPage === 'navigate' && destCoords !== null
   });
 
@@ -294,6 +300,7 @@ export default function App() {
                 <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Bell size={36} />} label="Notify Area" onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
                 <div className="col-span-2">
                   <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
@@ -396,6 +403,93 @@ export default function App() {
                   />
                 ))}
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {currentPage === 'notify' && (
+          <motion.div key="notify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex-1 flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+            {renderHeader('Notify Contacts')}
+            <div className="flex-1 p-6 overflow-y-auto space-y-8 pb-20">
+
+              {/* User Details Box */}
+              <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><MapIcon size={20} /> Journey Details</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium opacity-70 mb-1">Traveler Name</label>
+                    <input
+                      type="text"
+                      value={notifyName}
+                      onChange={e => setNotifyName(e.target.value)}
+                      placeholder="Enter your name"
+                      className={`w-full p-3 rounded-xl border ${inputClass}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium opacity-70 mb-1">Destination Name</label>
+                    <input
+                      type="text"
+                      value={destination}
+                      onChange={e => setDestination(e.target.value)}
+                      placeholder="e.g. Work, Home, Station"
+                      className={`w-full p-3 rounded-xl border ${inputClass}`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Number List Box */}
+              <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><PhoneCall size={20} /> Broadcast Numbers</h3>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="tel"
+                    value={newNumber}
+                    onChange={e => setNewNumber(e.target.value)}
+                    placeholder="+91..."
+                    className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
+                  />
+                  <button
+                    onClick={() => {
+                      if (newNumber.length >= 10 && !notifyNumbers.includes(newNumber)) {
+                        // Simple E164 fallback formatting if not provided
+                        const formatted = newNumber.startsWith('+') ? newNumber : `+91${newNumber.replace(/\D/g, '')}`;
+                        setNotifyNumbers([...notifyNumbers, formatted]);
+                        setNewNumber('');
+                      }
+                    }}
+                    className="px-4 bg-emerald-600 text-white rounded-xl font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <ul className="space-y-2">
+                  {notifyNumbers.length === 0 && <p className="text-sm opacity-50 text-center py-2">No numbers added. Will fallback to Emergency Contact.</p>}
+                  {notifyNumbers.map((num) => (
+                    <li key={num} className={`flex justify-between items-center p-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                      <span className="font-medium tracking-wide">{num}</span>
+                      <button onClick={() => setNotifyNumbers(notifyNumbers.filter(n => n !== num))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={18} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* QR Share Box */}
+              <div className={`p-6 rounded-2xl shadow-sm border flex flex-col items-center text-center ${cardClass}`}>
+                <div className="bg-white p-4 rounded-xl shadow-inner mb-4">
+                  <QRCodeSVG
+                    value={JSON.stringify({ app: "EchoSight", type: "notify", userName: notifyName, timestamp: Date.now() })}
+                    size={150}
+                  />
+                </div>
+                <h3 className="font-bold text-lg flex items-center gap-2 justify-center"><QrCode size={20} /> Family Pairing</h3>
+                <p className="text-sm opacity-70 mt-2">Guardians can scan this QR code to confirm tracking authorization securely.</p>
+              </div>
+
             </div>
           </motion.div>
         )}
