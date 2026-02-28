@@ -18,11 +18,17 @@ export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
 
-  const [status, setStatus] = useState(t('status_ready', localStorage.getItem('appLanguage') || 'English'));
-  const [processing, setProcessing] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(localStorage.getItem('appLanguage') || 'English');
+  const [status, setStatus] = useState(t('status_ready', currentLanguage));
+  const [processing, setProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const isDarkMode = false; // Add toggle later if needed
+
+  useEffect(() => {
+    if (currentPage === 'home') {
+      setStatus(t('status_ready', currentLanguage));
+    }
+  }, [currentPage, currentLanguage]);
 
   // Feature specific states
   const [destination, setDestination] = useState('');
@@ -244,15 +250,15 @@ export default function App() {
           </button>
         )}
       </div>
-      <div className="w-2/4 flex items-center justify-center gap-2 text-center">
+      <div className="w-2/4 flex items-center justify-center gap-3 text-center">
         {!showBack && (
           <img
-            src="/icon.svg"
+            src="/walking-stick.png"
             alt="App Logo"
-            className="max-h-[36px] w-auto object-contain p-1"
+            className="max-h-[44px] w-auto object-contain drop-shadow-sm"
           />
         )}
-        <h1 className="text-lg font-bold tracking-tight whitespace-nowrap">{title}</h1>
+        <h1 className={`${showBack ? 'text-xl' : 'text-2xl'} font-extrabold tracking-tight whitespace-nowrap`}>{title}</h1>
       </div>
       <div className="w-1/4 flex justify-end items-center gap-3">
         {isListening && <Mic className="text-red-500 animate-pulse" size={20} />}
@@ -270,22 +276,30 @@ export default function App() {
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
             {renderHeader('EchoSight', false)}
 
-            <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-              <p className={`text-2xl font-medium leading-relaxed max-w-2xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                {status}
-              </p>
-              {cameraError && <p className="text-red-500 mt-4 text-sm">Camera Error: {cameraError}</p>}
+            <div className="flex-none p-4 min-h-[100px] flex flex-col items-center justify-center">
+              {status !== t('status_ready', currentLanguage) && (
+                <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                  <p className="text-lg font-semibold">{status}</p>
+                </div>
+              )}
+              {cameraError && (
+                <div className="bg-red-50 text-red-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                  <p className="text-sm font-semibold">Camera Error: {cameraError}</p>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 p-4 pb-8 overflow-y-auto">
-              <AccessibleButton icon={<Map size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Search size={36} />} label={t('btn_find', currentLanguage)} onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
-              <div className="col-span-2">
-                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
+            <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
+              <div className="grid grid-cols-2 gap-4 w-full h-full content-start max-w-md mx-auto">
+                <AccessibleButton icon={<Map size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Search size={36} />} label={t('btn_find', currentLanguage)} onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
+                <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
+                <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
+                <div className="col-span-2">
+                  <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
+                </div>
               </div>
             </div>
           </motion.div>
