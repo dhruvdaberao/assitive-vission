@@ -6,7 +6,12 @@ export const LANGUAGE_CONFIG = {
   'Marathi': { code: 'mr-IN', voice: 'meera', confirmText: 'तुमची भाषा निवड जतन केली आहे.' },
   'Tamil': { code: 'ta-IN', voice: 'meera', confirmText: 'உங்கள் மொழி விருப்பம் சேமிக்கப்பட்டது.' },
   'Telugu': { code: 'te-IN', voice: 'meera', confirmText: 'మీ భాష ఎంపిక సేవ్ చేయబడింది.' },
-  'Bengali': { code: 'bn-IN', voice: 'meera', confirmText: 'আপনার ভাষা পছন্দ সংরক্ষণ করা হয়েছে।' }
+  'Bengali': { code: 'bn-IN', voice: 'meera', confirmText: 'আপনার ভাষা পছন্দ সংরক্ষণ করা হয়েছে।' },
+  'Gujarati': { code: 'gu-IN', voice: 'meera', confirmText: 'તમારી ભાષા પસંદગી સાચવવામાં આવી છે.' },
+  'Kannada': { code: 'kn-IN', voice: 'meera', confirmText: 'ನಿಮ್ಮ ಭಾಷೆಯ ಆಯ್ಕೆಯನ್ನು ಉಳಿಸಲಾಗಿದೆ.' },
+  'Malayalam': { code: 'ml-IN', voice: 'meera', confirmText: 'നിങ്ങളുടെ ഭാഷാ മുൻഗണന സംരക്ഷിച്ചു.' },
+  'Punjabi': { code: 'pa-IN', voice: 'meera', confirmText: 'ਤੁਹਾਡੀ ਭਾਸ਼ਾ ਦੀ ਤਰਜੀਹ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ ਹੈ।' },
+  'Odia': { code: 'od-IN', voice: 'meera', confirmText: 'ଆପଣଙ୍କର ଭାଷା ପସନ୍ଦ ସଂରକ୍ଷଣ କରାଯାଇଛି |' }
 };
 
 export function parseSpokenNumber(text: string): number | null {

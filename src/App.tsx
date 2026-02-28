@@ -101,82 +101,60 @@ export default function App() {
         }
       } else if (currentPage === 'language') {
         try {
-          const ans = await speakAndListen(t('lang_prompt_1', currentLanguage));
-          const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
-          const ansWords = ansLower.split(/\s+/);
+          // Play single instruction prompt once
+          await speak(t('lang_prompt_visual', currentLanguage));
 
-          // Comprehensive array of "yes" and affirmative words across English, Hindi, Marathi, Tamil, Telugu, and Bengali (including ASCII phonetics)
-          const positiveAnswers = [
-            'yes', 'yeah', 'yep', 'yup', 'ok', 'okay', 'sure', 'change',
-            'haan', 'ha', 'haa', 'हाँ', 'हां', 'ho', 'हो',
-            'aam', 'ஆம்', 'avunu', 'అవును', 'hyaan', 'হ্যাঁ', 'badalna', 'badlo'
-          ];
+          let isActiveSelection = true;
+          // Start open listening loop for language names
+          while (isActiveSelection && isActive) {
+            const ans = await listen(3); // Wait for open mic
+            if (!ans) continue;
 
-          if (ansWords.some(w => positiveAnswers.includes(w))) {
-            let validChoice = false;
-            let retries = 0;
+            const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+            const words = ansLower.split(/\s+/);
+            console.log("Language spoken input:", ansLower);
 
-            while (isActive && !validChoice && retries < 3) {
-              try {
-                const numStr = await speakAndListen(t('lang_prompt_2', currentLanguage));
-                const spoken = numStr.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
-                console.log("Language spoken input:", spoken);
-
-                let newLang = '';
-                const words = spoken.split(/\s+/);
-
-                if (words.some(w => ['1', 'one', 'ek', 'एक', 'first', 'won', 'wan', 'hindi', 'हिंदी'].includes(w))) newLang = 'Hindi';
-                else if (words.some(w => ['2', 'two', 'do', 'दो', 'second', 'too', 'to', 'marathi', 'मराठी', 'don', 'दोन'].includes(w))) newLang = 'Marathi';
-                else if (words.some(w => ['3', 'three', 'teen', 'तीन', 'third', 'tree', 'english', 'अंग्रेज़ी', 'इंग्रजी'].includes(w))) newLang = 'English';
-                else if (words.some(w => ['4', 'four', 'char', 'चार', 'fourth', 'for', 'tamil', 'தமிழ்', 'nanku', 'நான்கு'].includes(w))) newLang = 'Tamil';
-                else if (words.some(w => ['5', 'five', 'panch', 'पांच', 'fifth', 'telugu', 'తెలుగు', 'aidu', 'ఐదు'].includes(w))) newLang = 'Telugu';
-                else if (words.some(w => ['0', 'zero', 'shunya', 'शून्य', 'cancel', 'stop', 'exit'].includes(w))) {
-                  validChoice = true;
-                  await speak(t('lang_cancelled', currentLanguage));
-                  break;
-                }
-
-                if (newLang) {
-                  console.log("Language successfully matched to:", newLang);
-                  setCurrentLanguage(newLang);
-                  localStorage.setItem('appLanguage', newLang);
-
-                  // Forcefully stop listening to prevent re-trigger loop
-                  stopListening();
-
-                  const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
-
-                  // Small delay for React state propagation
-                  await new Promise(r => setTimeout(r, 600));
-                  await speak(confirmText);
-
-                  validChoice = true;
-                } else {
-                  console.warn("Could not parse language input:", spoken);
-                  retries++;
-                  if (retries < 3) {
-                    await speak(t('lang_invalid_2', currentLanguage));
-                  }
-                }
-              } catch (e) {
-                console.error("Speech recognition error during language selection:", e);
-                retries++;
-                await new Promise(r => setTimeout(r, 600));
-                if (isActive && retries < 3) await speak(t('lang_repeat', currentLanguage));
-              }
+            let newLang = '';
+            // Checking against 11 supported languages and cancel
+            if (words.some(w => ['hindi', 'हिंदी'].includes(w))) newLang = 'Hindi';
+            else if (words.some(w => ['marathi', 'मराठी'].includes(w))) newLang = 'Marathi';
+            else if (words.some(w => ['english', 'अंग्रेज़ी', 'इंग्रजी'].includes(w))) newLang = 'English';
+            else if (words.some(w => ['tamil', 'தமிழ்'].includes(w))) newLang = 'Tamil';
+            else if (words.some(w => ['telugu', 'తెలుగు'].includes(w))) newLang = 'Telugu';
+            else if (words.some(w => ['bengali', 'বাংলা', 'bangla'].includes(w))) newLang = 'Bengali';
+            else if (words.some(w => ['gujarati', 'ગુજરાતી'].includes(w))) newLang = 'Gujarati';
+            else if (words.some(w => ['kannada', 'ಕನ್ನಡ'].includes(w))) newLang = 'Kannada';
+            else if (words.some(w => ['malayalam', 'മലയാളം'].includes(w))) newLang = 'Malayalam';
+            else if (words.some(w => ['punjabi', 'ਪੰਜਾਬੀ'].includes(w))) newLang = 'Punjabi';
+            else if (words.some(w => ['odia', 'ଓଡ଼ିଆ', 'oriya'].includes(w))) newLang = 'Odia';
+            else if (words.some(w => ['cancel', 'stop', 'rad', 'रद्द'].includes(w))) {
+              await speak(t('lang_cancelled', currentLanguage));
+              setCurrentPage('home');
+              isActiveSelection = false;
+              break;
             }
-            if (!validChoice && isActive) {
-              await speak(t('lang_invalid_3', currentLanguage));
+
+            if (newLang) {
+              console.log("Language successfully matched to:", newLang);
+              setCurrentLanguage(newLang);
+              localStorage.setItem('appLanguage', newLang);
+
+              stopListening();
+
+              const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
+              await new Promise(r => setTimeout(r, 600));
+              await speak(confirmText);
+
+              setCurrentPage('home');
+              isActiveSelection = false;
+              break;
+            } else {
+              await speak(t('lang_invalid', currentLanguage));
             }
-          } else {
-            await speak(t('lang_cancelled', currentLanguage));
           }
         } catch (e) {
-          if (isActive) await speak(t('lang_repeat', currentLanguage));
-        } finally {
           if (isActive) setCurrentPage('home');
         }
-      } else if (currentPage === 'describe') {
         await speak(t('desc_start', currentLanguage));
         handleDescribeScene();
       } else if (currentPage === 'currency') {
@@ -393,11 +371,31 @@ export default function App() {
 
         {currentPage === 'language' && (
           <motion.div key="language" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Change Language')}
-            <div className="flex-1 flex items-center justify-center p-6">
-              <p className="text-2xl font-medium text-center">
-                {t('status_listening_lang', currentLanguage)}
-              </p>
+            {renderHeader(t('btn_language', currentLanguage))}
+            <div className="p-4 text-center">
+              <p className="text-lg font-medium opacity-80">{t('lang_prompt_visual', currentLanguage)}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
+              <div className="grid grid-cols-2 gap-4 w-full content-start max-w-md mx-auto">
+                {Object.keys(LANGUAGE_CONFIG).map((lang) => (
+                  <AccessibleButton
+                    key={lang}
+                    icon={<Languages size={24} />}
+                    label={lang}
+                    onActivate={() => {
+                      stopSpeaking();
+                      stopListening();
+                      setCurrentLanguage(lang);
+                      localStorage.setItem('appLanguage', lang);
+                      const confirmText = LANGUAGE_CONFIG[lang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${lang}`;
+                      speak(confirmText);
+                      setCurrentPage('home');
+                    }}
+                    speak={speak}
+                    color={currentLanguage === lang ? "bg-emerald-600 text-white border-emerald-700" : cardClass}
+                  />
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
@@ -521,6 +519,7 @@ interface AccessibleButtonProps {
   speak: (text: string) => void;
   disabled?: boolean;
   color?: string;
+  key?: string;
 }
 
 function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-gray-900" }: AccessibleButtonProps) {

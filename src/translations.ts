@@ -1,4 +1,4 @@
-export type LanguageCode = 'English' | 'Hindi' | 'Marathi' | 'Tamil' | 'Telugu' | 'Bengali';
+export type LanguageCode = 'English' | 'Hindi' | 'Marathi' | 'Tamil' | 'Telugu' | 'Bengali' | 'Gujarati' | 'Kannada' | 'Malayalam' | 'Punjabi' | 'Odia';
 
 export const translations: Record<string, Record<LanguageCode, string>> = {
     welcome_message: {
@@ -7,7 +7,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "बटणाचे नाव ऐकण्यासाठी एकदा टॅप करा. वैशिष्ट्य उघडण्यासाठी दोनदा टॅप करा.",
         Tamil: "பொத்தானின் பெயரைக் கேட்க ஒரு முறை தட்டவும். அம்சத்தைத் திறக்க இருமுறை தட்டவும்.",
         Telugu: "బటన్ పేరు వినడానికి ఒకసారి నొక్కండి. ఫీచర్‌ను తెరవడానికి రెండుసార్లు నొక్కండి.",
-        Bengali: "বোতামের নাম শুনতে একবার আলতো চাপুন। বৈশিষ্ট্য খুলতে দুবার আলতো চাপুন।"
+        Bengali: "বোতামের নাম শুনতে একবার আলতো চাপুন। বৈশিষ্ট্য খুলতে দুবার আলতো চাপুন।",
+        Gujarati: "બટનનું નામ સાંભળવા માટે એકવાર ટેપ કરો. સુવિધા ખોલવા માટે બે વાર ટેપ કરો.",
+        Kannada: "ಬಟನ್ ಹೆಸರನ್ನು ಕೇಳಲು ಒಮ್ಮೆ ಟ್ಯಾಪ್ ಮಾಡಿ. ವೈಶಿಷ್ಟ್ಯವನ್ನು ತೆರೆಯಲು ಎರಡು ಬಾರಿ ಟ್ಯಾಪ್ ಮಾಡಿ.",
+        Malayalam: "ബട്ടണിന്റെ പേര് കേൾക്കാൻ ഒരിക്കൽ ടാപ്പുചെയ്യുക. ഫീച്ചർ തുറക്കാൻ രണ്ടുതവണ ടാപ്പുചെയ്യുക.",
+        Punjabi: "ਬਟਨ ਦਾ ਨਾਮ ਸੁਣਨ ਲਈ ਇੱਕ ਵਾਰ ਟੈਪ ਕਰੋ। ਵਿਸ਼ੇਸ਼ਤਾ ਖੋਲ੍ਹਣ ਲਈ ਦੋ ਵਾਰ ਟੈਪ ਕਰੋ।",
+        Odia: "ବଟନ୍ ନାମ ଶୁଣିବାକୁ ଥରେ ନକଲ କରନ୍ତୁ | ବୈଶିଷ୍ଟ୍ୟ ଖୋଲିବାକୁ ଦୁଇଥର ନକଲ କରନ୍ତୁ |"
     },
     nav_prompt: {
         English: "Where do you want to go?",
@@ -15,7 +20,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "तुम्हाला कुठे जायचे आहे?",
         Tamil: "நீங்கள் எங்கு செல்ல விரும்புகிறீர்கள்?",
         Telugu: "మీరు ఎక్కడికి వెళ్లాలి అనుకుంటున్నారు?",
-        Bengali: "আপনি কোথায় যেতে চান?"
+        Bengali: "আপনি কোথায় যেতে চান?",
+        Gujarati: "તમારે ક્યાં જવું છે?",
+        Kannada: "ನೀವು ಎಲ್ಲಿಗೆ ಹೋಗಬೇಕು?",
+        Malayalam: "നിങ്ങൾക്ക് എവിടെ പോകണം?",
+        Punjabi: "ਤੁਸੀਂ ਕਿੱਥੇ ਜਾਣਾ ਚਾਹੁੰਦੇ ਹੋ?",
+        Odia: "ତୁମେ କେଉଁଠିକୁ ଯିବାକୁ ଚାହୁଁଛ?"
     },
     nav_confirm: {
         English: "Navigating to destination. Path clear. Walk forward.",
@@ -23,7 +33,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "गंतव्यस्थानाकडे नेव्हिगेट करत आहे. रस्ता मोकळा आहे. पुढे चाला.",
         Tamil: "இலக்கிற்குச் செல்கிறது. பாதை தெளிவாக உள்ளது. முன்னே செல்லுங்கள்.",
         Telugu: "గమ్యస్థానానికి దారిచూపుతోంది. మార్గం స్పష్టంగా ఉంది. ముందుకు నడవండి.",
-        Bengali: "গন্তব্যে নেভিগেট করছে। পথ পরিষ্কার। এগিয়ে যান।"
+        Bengali: "গন্তব্যে নেভিগেট করছে। পথ পরিষ্কার। এগিয়ে যান।",
+        Gujarati: "ગંતવ્ય પર નેવિગેટ કરી રહ્યાં છીએ. રસ્તો સાફ છે. આગળ ચાલો.",
+        Kannada: "ಗಮ್ಯಸ್ಥಾನಕ್ಕೆ ನ್ಯಾವಿಗೇಟ್ ಮಾಡಲಾಗುತ್ತಿದೆ. ದಾರಿ ಸ್ಪಷ್ಟವಾಗಿದೆ. ಮುಂದೆ ನಡೆಯಿರಿ.",
+        Malayalam: "ലക്ഷ്യസ്ഥാനത്തേക്ക് നാവിഗേറ്റ് ചെയ്യുന്നു. വഴി വ്യക്തമാണ്. മുന്നോട്ട് നടക്കൂ.",
+        Punjabi: "ਮੰਜ਼ਿਲ 'ਤੇ ਨੈਵੀਗੇਟ ਕਰ ਰਿਹਾ ਹੈ। ਰਸਤਾ ਸਾਫ਼ ਹੈ। ਅੱਗੇ ਚੱਲੋ।",
+        Odia: "ଗନ୍ତବ୍ୟ ସ୍ଥଳକୁ ନେଭିଗେଟ୍ କରୁଛି | ରାସ୍ତା ସଫା ଅଛି | ଆଗକୁ ଚାଲ |"
     },
     nav_fail: {
         English: "No destination detected. Returning to home.",
@@ -31,7 +46,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "कोणतेही गंतव्यस्थान आढळले नाही. होमवर परत येत आहे.",
         Tamil: "இலக்கு ஏதும் கண்டறியப்படவில்லை. முகப்பிற்குத் திரும்புகிறது.",
         Telugu: "గమ్యస్థానం కనుగొనబడలేదు. హోమ్‌కి తిరిగి వస్తోంది.",
-        Bengali: "কোনো গন্তব্য শনাক্ত হয়নি। হোমে ফিরে যাচ্ছে।"
+        Bengali: "কোনো গন্তব্য শনাক্ত হয়নি। হোমে ফিরে যাচ্ছে।",
+        Gujarati: "કોઈ ગંતવ્ય મળ્યું નથી. હોમ પર પાછા ફરી રહ્યાં છીએ.",
+        Kannada: "ಯಾವುದೇ ಗಮ್ಯಸ್ಥಾನ ಕಂಡುಬಂದಿಲ್ಲ. ಹೋಮ್‌ಗೆ ಹಿಂತಿರುಗಲಾಗುತ್ತಿದೆ.",
+        Malayalam: "ലക്ഷ്യസ്ഥാനം കണ്ടെത്തിയില്ല. ഹോമിലേക്ക് മടങ്ങുന്നു.",
+        Punjabi: "ਕੋਈ ਮੰਜ਼ਿਲ ਨਹੀਂ ਮਿਲੀ। ਹੋਮ 'ਤੇ ਵਾਪਸ ਜਾ ਰਿਹਾ ਹੈ।",
+        Odia: "କୌଣସି ଗନ୍ତବ୍ୟସ୍ଥଳ ମିଳିଲା ନାହିଁ | ହୋମକୁ ଫେରୁଛି |"
     },
     find_prompt: {
         English: "What are you looking for?",
@@ -39,7 +59,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "तुम्ही काय शोधत आहात?",
         Tamil: "நீங்கள் எதைத் தேடுகிறீர்கள்?",
         Telugu: "మీరు దేని కోసం వెతుకుతున్నారు?",
-        Bengali: "আপনি কী খুঁজছেন?"
+        Bengali: "আপনি কী খুঁজছেন?",
+        Gujarati: "તમે શું શોધી રહ્યા છો?",
+        Kannada: "ನೀವು ಏನನ್ನು ಹುಡುಕುತ್ತಿದ್ದೀರಿ?",
+        Malayalam: "നിങ്ങൾ എന്താണ് തിരയുന്നത്?",
+        Punjabi: "ਤੁਸੀਂ ਕੀ ਲੱਭ ਰਹੇ ਹੋ?",
+        Odia: "ଆପଣ କ’ଣ ଖୋଜୁଛନ୍ତି?"
     },
     find_confirm: {
         English: "Scanning area for object.",
@@ -47,7 +72,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "वस्तूसाठी परिसर स्कॅन करत आहे.",
         Tamil: "பொருளுக்காக பகுதியை ஸ்கேன் செய்கிறது.",
         Telugu: "వస్తువు కోసం ప్రాంతాన్ని స్కాన్ చేస్తోంది.",
-        Bengali: "বস্তুর জন্য এলাকা স্ক্যান করা হচ্ছে।"
+        Bengali: "বস্তুর জন্য এলাকা স্ক্যান করা হচ্ছে।",
+        Gujarati: "વસ્તુ માટે વિસ્તાર સ્કેન કરી રહ્યાં છીએ.",
+        Kannada: "ವಸ್ತುಗಾಗಿ ಪ್ರದೇಶವನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗುತ್ತಿದೆ.",
+        Malayalam: "വസ്തുവിനായി പ്രദേശം സ്കാൻ ചെയ്യുന്നു.",
+        Punjabi: "ਵਸਤੂ ਲਈ ਖੇਤਰ ਸਕੈਨ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ।",
+        Odia: "ବସ୍ତୁ ପାଇଁ ଆଖପାଖ ସ୍କାନ୍ କରୁଛି |"
     },
     find_fail: {
         English: "No object detected. Returning to home.",
@@ -55,23 +85,25 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "कोणतीही वस्तू आढळली नाही. होमवर परत येत आहे.",
         Tamil: "பொருள் ஏதும் கண்டறியப்படவில்லை. முகப்பிற்குத் திரும்புகிறது.",
         Telugu: "వస్తువు కనుగొనబడలేదు. హోమ్‌కి తిరిగి వస్తోంది.",
-        Bengali: "কোনো বস্তু শনাক্ত হয়নি। হোমে ফিরে যাচ্ছে।"
+        Bengali: "কোনো বস্তু শনাক্ত হয়নি। হোমে ফিরে যাচ্ছে।",
+        Gujarati: "કોઈ વસ્તુ મળી નથી. હોમ પર પાછા ફરી રહ્યાં છીએ.",
+        Kannada: "ಯಾವುದೇ ವಸ್ತು ಕಂಡುಬಂದಿಲ್ಲ. ಹೋಮ್‌ಗೆ ಹಿಂತಿರುಗಲಾಗುತ್ತಿದೆ.",
+        Malayalam: "ഒരു വസ്തുവും കണ്ടെത്തിയില്ല. ഹോമിലേക്ക് മടങ്ങുന്നു.",
+        Punjabi: "ਕੋਈ ਵਸਤੂ ਨਹੀਂ ਮਿਲੀ। ਹੋਮ 'ਤੇ ਵਾਪਸ ਜਾ ਰਿਹਾ ਹੈ।",
+        Odia: "କୌଣସି ବସ୍ତୁ ଚିହ୍ନଟ ହୋଇନାହିଁ | ହୋମକୁ ଫେରୁଛି |"
     },
-    lang_prompt_1: {
-        English: "Do you want to change language? Say yes or no.",
-        Hindi: "क्या आप भाषा बदलना चाहते हैं? हाँ या ना कहें।",
-        Marathi: "तुम्हाला भाषा बदलायची आहे का? होय किंवा नाही सांगा.",
-        Tamil: "மொழியை மாற்ற விரும்புகிறீர்களா? ஆம் அல்லது இல்லை என்று கூறுங்கள்.",
-        Telugu: "మీరు భాషను మార్చాలనుకుంటున్నారా? అవును లేదా కాదు అని చెప్పండి.",
-        Bengali: "আপনি কি ভাষা পরিবর্তন করতে চান? হ্যাঁ বা না বলুন।"
-    },
-    lang_prompt_2: {
-        English: "Say 1 for Hindi. Say 2 for Marathi. Say 3 for English. Say 4 for Tamil. Say 5 for Telugu. Say 0 to cancel.",
-        Hindi: "हिंदी के लिए 1 कहें। मराठी के लिए 2 कहें। अंग्रेजी के लिए 3 कहें। तमिल के लिए 4 कहें। तेलुगु के लिए 5 कहें। रद्द करने के लिए 0 कहें।",
-        Marathi: "हिंदीसाठी 1 सांगा. मराठीसाठी 2 सांगा. इंग्रजीसाठी 3 सांगा. तमिळसाठी 4 सांगा. तेलगूसाठी 5 सांगा. रद्द करण्यासाठी 0 सांगा.",
-        Tamil: "இந்திக்கு 1 என்று கூறுங்கள். மராத்திக்கு 2 என்று கூறுங்கள். ஆங்கிலத்திற்கு 3 என்று கூறுங்கள். தமிழுக்கு 4 என்று கூறுங்கள். தெலுங்குக்கு 5 என்று கூறுங்கள். ரத்து செய்ய 0 என்று கூறுங்கள்.",
-        Telugu: "హిందీ కోసం 1 అని చెప్పండి. మరాఠీ కోసం 2 అని చెప్పండి. ఇంగ్లీష్ కోసం 3 అని చెప్పండి. తమిళం కోసం 4 అని చెప్పండి. తెలుగు కోసం 5 అని చెప్పండి. రద్దు చేయడానికి 0 అని చెప్పండి.",
-        Bengali: "হিন্দির জন্য 1 বলুন। মারাঠির জন্য 2 বলুন। ইংরেজির জন্য 3 বলুন। তামিলের জন্য 4 বলুন। তেলুগুর জন্য 5 বলুন। বাতিল করতে 0 বলুন।"
+    lang_prompt_visual: {
+        English: "Select a language from the screen, or say the language name.",
+        Hindi: "स्क्रीन से कोई भाषा चुनें, या भाषा का नाम बोलें।",
+        Marathi: "स्क्रीनवरून भाषा निवडा किंवा भाषेचे नाव सांगा.",
+        Tamil: "திரையிலிருந்து ஒரு மொழியைத் தேர்ந்தெடுக்கவும் அல்லது மொழியின் பெயரைக் கூறவும்.",
+        Telugu: "స్క్రీన్ నుండి భాషను ఎంచుకోండి లేదా భాష పేరు చెప్పండి.",
+        Bengali: "স্ক্রিন থেকে একটি ভাষা নির্বাচন করুন, বা ভাষার নাম বলুন।",
+        Gujarati: "સ્ક્રીન પરથી ભાષા પસંદ કરો, અથવા ભાષાનું નામ કહો.",
+        Kannada: "ಪರದೆಯಿಂದ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ, ಅಥವಾ ಭಾಷೆಯ ಹೆಸರನ್ನು ಹೇಳಿ.",
+        Malayalam: "സ്ക്രീനിൽ നിന്ന് ഒരു ഭാഷ തിരഞ്ഞെടുക്കുക, അല്ലെങ്കിൽ ഭാഷയുടെ പേര് പറയുക.",
+        Punjabi: "ਸਕ੍ਰੀਨ ਤੋਂ ਕੋਈ ਭਾਸ਼ਾ ਚੁਣੋ, ਜਾਂ ਭਾਸ਼ਾ ਦਾ ਨਾਮ ਬੋਲੋ।",
+        Odia: "ସ୍କ୍ରିନରୁ ଏକ ଭାଷା ଚୟନ କରନ୍ତୁ, କିମ୍ବା ଭାଷାର ନାମ କୁହନ୍ତୁ |"
     },
     lang_cancelled: {
         English: "Cancelled.",
@@ -79,39 +111,25 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "रद्द केले.",
         Tamil: "ரத்து செய்யப்பட்டது.",
         Telugu: "రద్దు చేయబడింది.",
-        Bengali: "বাতিল করা হয়েছে।"
+        Bengali: "বাতিল করা হয়েছে।",
+        Gujarati: "રદ કરવામાં આવ્યું.",
+        Kannada: "ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ.",
+        Malayalam: "റദ്ദാക്കി.",
+        Punjabi: "ਰੱਦ ਕੀਤਾ ਗਿਆ।",
+        Odia: "ବାତିଲ୍ କରାଯାଇଛି |"
     },
-    lang_invalid_1: {
-        English: "Invalid selection. Please say a number between 1 and 5.",
-        Hindi: "अमान्य चयन। कृपया 1 और 5 के बीच कोई संख्या कहें।",
-        Marathi: "अवैध निवड. कृपया 1 ते 5 मधील संख्या सांगा.",
-        Tamil: "தவறான தேர்வு. 1 முதல் 5 வரை உள்ள எண்ணைக் கூறுங்கள்.",
-        Telugu: "చెల్లని ఎంపిక. దయచేసి 1 మరియు 5 మధ్య ఒక సంఖ్యను చెప్పండి.",
-        Bengali: "অবৈধ নির্বাচন। অনুগ্রহ করে 1 থেকে 5 এর মধ্যে একটি সংখ্যা বলুন।"
-    },
-    lang_invalid_2: {
-        English: "I didn't catch that. Please say the number or the language name.",
-        Hindi: "मुझे समझ नहीं आया। कृपया संख्या या भाषा का नाम कहें।",
-        Marathi: "मला समजले नाही. कृपया संख्या किंवा भाषेचे नाव सांगा.",
-        Tamil: "எனக்கு புரியவில்லை. தயவுசெய்து எண் அல்லது மொழியின் பெயரைக் கூறவும்.",
-        Telugu: "నాకు అర్థం కాలేదు. దయచేసి సంఖ్య లేదా భాష పేరు చెప్పండి.",
-        Bengali: "আমি বুঝতে পারিনি। অনুগ্রহ করে সংখ্যা বা ভাষার নাম বলুন।"
-    },
-    lang_invalid_3: {
-        English: "Too many invalid attempts. Returning to home.",
-        Hindi: "बहुत सारे अमान्य प्रयास। होम पर लौट रहे हैं।",
-        Marathi: "खूप जास्त अवैध प्रयत्न. होमवर परत येत आहे.",
-        Tamil: "மிகவும் அதிகமான தவறான முயற்சிகள். முகப்பிற்குத் திரும்புகிறது.",
-        Telugu: "చాలా చెల్లని ప్రయత్నాలు. హోమ్‌కి తిరిగి వస్తోంది.",
-        Bengali: "অনেক বেশি অবৈধ প্রচেষ্টা। হোমে ফিরে যাচ্ছে।"
-    },
-    lang_repeat: {
-        English: "Please repeat your choice.",
-        Hindi: "कृपया अपनी पसंद दोहराएं।",
-        Marathi: "कृपया तुमची निवड पुन्हा सांगा.",
-        Tamil: "உங்கள் தேர்வை மீண்டும் கூறவும்.",
-        Telugu: "దయచేసి మీ ఎంపికను పునరావృతం చేయండి.",
-        Bengali: "অনুগ্রহ করে আপনার পছন্দটি পুনরাবৃত্তি করুন।"
+    lang_invalid: {
+        English: "I didn't catch that. Please try again.",
+        Hindi: "मुझे समझ नहीं आया। कृपया पुनः प्रयास करें।",
+        Marathi: "मला समजले नाही. कृपया पुन्हा प्रयत्न करा.",
+        Tamil: "எனக்கு புரியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+        Telugu: "నాకు అర్థం కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.",
+        Bengali: "আমি বুঝতে পারিনি। আবার চেষ্টা করুন।",
+        Gujarati: "મને સમજાયું નહીં. કૃપા કરીને ફરીથી પ્રયાસ કરો.",
+        Kannada: "ನನಗೆ ಅರ್ಥವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+        Malayalam: "എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും ശ്രമിക്കുക.",
+        Punjabi: "ਮੈਨੂੰ ਸਮਝ ਨਹੀਂ ਆਇਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+        Odia: "ମୁଁ ବୁଝିପାରିଲି ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ |"
     },
     desc_start: {
         English: "Analyzing surroundings.",
@@ -119,7 +137,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "सभोवतालचे विश्लेषण करत आहे.",
         Tamil: "சுற்றுப்புறங்களை பகுப்பாய்வு செய்கிறது.",
         Telugu: "పరిసరాలను విశ్లేషిస్తోంది.",
-        Bengali: "পারিপার্শ্বিক বিশ্লেষণ করা হচ্ছে।"
+        Bengali: "পারিপার্শ্বিক বিশ্লেষণ করা হচ্ছে।",
+        Gujarati: "આસપાસના વાતાવરણનું વિશ્લેષણ કરી રહ્યાં છીએ.",
+        Kannada: "ಸುತ್ತಮುತ್ತಲಿನ ಪ್ರದೇಶಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ.",
+        Malayalam: "ചുറ്റുപാടുകൾ വിശകലനം ചെയ്യുന്നു.",
+        Punjabi: "ਆਲੇ ਦੁਆਲੇ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ।",
+        Odia: "ପରିବେଶ ବିଶ୍ଳେଷଣ କରୁଛି |"
     },
     currency_start: {
         English: "Show currency in front of camera.",
@@ -127,7 +150,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "कॅमेरासमोर चलन दाखवा.",
         Tamil: "கேமராவின் முன் நாணயத்தைக் காட்டவும்.",
         Telugu: "కెమెరా ముందు కరెన్సీని చూపించు.",
-        Bengali: "ক্যামেরার সামনে মুদ্রা দেখান।"
+        Bengali: "ক্যামেরার সামনে মুদ্রা দেখান।",
+        Gujarati: "કેમેરાની સામે ચલણ બતાવો.",
+        Kannada: "ಕ್ಯಾಮೆರಾ ಮುಂದೆ ಕರೆನ್ಸಿಯನ್ನು ತೋರಿಸಿ.",
+        Malayalam: "ക്യാമറയ്ക്ക് മുന്നിൽ കറൻസി കാണിക്കുക.",
+        Punjabi: "ਕੈਮਰੇ ਦੇ ਸਾਹਮਣੇ ਕਰੰਸੀ ਦਿਖਾਓ।",
+        Odia: "କ୍ୟାମେରା ସାମ୍ନାରେ ମୁଦ୍ରା ଦେଖାନ୍ତୁ |"
     },
     service_unavail: {
         English: "Service unavailable.",
@@ -135,7 +163,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "सेवा अनुपलब्ध.",
         Tamil: "சேவை கிடைக்கவில்லை.",
         Telugu: "సేవ అందుబాటులో లేదు.",
-        Bengali: "পরিষেবা অনুপলব্ধ।"
+        Bengali: "পরিষেবা অনুপলব্ধ।",
+        Gujarati: "સેવા અનુપલબ્ધ છે.",
+        Kannada: "ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ.",
+        Malayalam: "സേവനം ലഭ്യമല്ല.",
+        Punjabi: "ਸੇਵਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+        Odia: "ସେବା ଉପଲବ୍ଧ ନାହିଁ |"
     },
     camera_unavail: {
         English: "Camera unavailable.",
@@ -143,7 +176,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "कॅमेरा अनुपलब्ध.",
         Tamil: "கேமரா கிடைக்கவில்லை.",
         Telugu: "కెమెరా అందుబాటులో లేదు.",
-        Bengali: "ক্যামেরা অনুপলব্ধ।"
+        Bengali: "ক্যামেরা অনুপলব্ধ।",
+        Gujarati: "કેમેરા અનુપલબ્ધ છે.",
+        Kannada: "ಕ್ಯಾಮೆರಾ ಲಭ್ಯವಿಲ್ಲ.",
+        Malayalam: "ക്യാമറ ലഭ്യമല്ല.",
+        Punjabi: "ਕੈਮਰਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+        Odia: "କ୍ୟାମେରା ଉପଲବ୍ଧ ନାହିଁ |"
     },
     btn_navigate: {
         English: "Navigate",
@@ -151,7 +189,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "नेव्हिगेट",
         Tamil: "வழிசெலுத்து",
         Telugu: "నావిగేట్ చేయండి",
-        Bengali: "নেভিগেট"
+        Bengali: "নেভিগেট",
+        Gujarati: "નેવિગેટ",
+        Kannada: "ನ್ಯಾವಿಗೇಟ್",
+        Malayalam: "നാവിഗേറ്റ് ചെയ്യുക",
+        Punjabi: "ਨੈਵੀਗੇਟ",
+        Odia: "ନେଭିଗେଟ୍"
     },
     btn_find: {
         English: "Find Object",
@@ -159,7 +202,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "वस्तू शोधा",
         Tamil: "பொருளைக் கண்டுபிடி",
         Telugu: "వస్తువును కనుగొనండి",
-        Bengali: "বস্তু খুঁজুন"
+        Bengali: "বস্তু খুঁজুন",
+        Gujarati: "વસ્તુ શોધો",
+        Kannada: "ವಸ್ತುವನ್ನು ಹುಡುಕಿ",
+        Malayalam: "വസ്തു കണ്ടെത്തുക",
+        Punjabi: "ਵਸਤੂ ਲੱਭੋ",
+        Odia: "ବସ୍ତୁ ଖୋଜ"
     },
     btn_describe: {
         English: "Describe Scene",
@@ -167,7 +215,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "दृश्याचे वर्णन करा",
         Tamil: "காட்சியை விவரி",
         Telugu: "సన్నివేశాన్ని వివరించండి",
-        Bengali: "দৃশ্য বর্ণনা করুন"
+        Bengali: "দৃশ্য বর্ণনা করুন",
+        Gujarati: "દ્રશ્યનું વર્ણન કરો",
+        Kannada: "ದೃಶ್ಯವನ್ನು ವಿವರಿಸಿ",
+        Malayalam: "രംഗം വിവരിക്കുക",
+        Punjabi: "ਦ੍ਰਿਸ਼ ਦਾ ਵਰਣਨ ਕਰੋ",
+        Odia: "ଦୃଶ୍ୟ ବର୍ଣ୍ଣନା କରନ୍ତୁ"
     },
     btn_currency: {
         English: "Currency",
@@ -175,7 +228,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "चलन",
         Tamil: "நாணயம்",
         Telugu: "కరెన్సీ",
-        Bengali: "মুদ্রা"
+        Bengali: "মুদ্রা",
+        Gujarati: "ચલણ",
+        Kannada: "ಕರೆನ್ಸಿ",
+        Malayalam: "കറൻസി",
+        Punjabi: "ਕਰੰਸੀ",
+        Odia: "ମୁଦ୍ରା"
     },
     btn_language: {
         English: "Language",
@@ -183,7 +241,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "भाषा",
         Tamil: "மொழி",
         Telugu: "భాష",
-        Bengali: "ভাষা"
+        Bengali: "ভাষা",
+        Gujarati: "ભાષા",
+        Kannada: "ಭಾಷೆ",
+        Malayalam: "ഭാഷ",
+        Punjabi: "ਭਾਸ਼ਾ",
+        Odia: "ଭାଷା"
     },
     btn_permissions: {
         English: "Permissions",
@@ -191,7 +254,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "परवानग्या",
         Tamil: "அனுமதிகள்",
         Telugu: "అనుమతులు",
-        Bengali: "অনুমতি"
+        Bengali: "অনুমতি",
+        Gujarati: "પરવાનગીઓ",
+        Kannada: "ಅನುಮತಿಗಳು",
+        Malayalam: "അനുമതികൾ",
+        Punjabi: "ਇਜਾਜ਼ਤਾਂ",
+        Odia: "ଅନୁମତିଗୁଡିକ"
     },
     btn_emergency: {
         English: "Emergency Info",
@@ -199,7 +267,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "आणीबाणीची माहिती",
         Tamil: "அவசரகால தகவல்",
         Telugu: "అత్యవసర సమాచారం",
-        Bengali: "জরুরী তথ্য"
+        Bengali: "জরুরী তথ্য",
+        Gujarati: "કટોકટીની માહિતી",
+        Kannada: "ತುರ್ತು ಮಾಹಿತಿ",
+        Malayalam: "അടിയന്തര വിവരങ്ങൾ",
+        Punjabi: "ਐਮਰਜੈਂਸੀ ਜਾਣਕਾਰੀ",
+        Odia: "ଜରୁରୀକାଳୀନ ସୂଚନା |"
     },
     btn_analyze_again: {
         English: "Analyze Again",
@@ -207,7 +280,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "पुन्हा विश्लेषण करा",
         Tamil: "மீண்டும் பகுப்பாய்வு செய்",
         Telugu: "మళ్లీ విశ్లేషించండి",
-        Bengali: "আবার বিশ্লেষণ করুন"
+        Bengali: "আবার বিশ্লেষণ করুন",
+        Gujarati: "ફરીથી વિશ્લેષણ કરો",
+        Kannada: "ಮತ್ತೆ ವಿಶ್ಲೇಷಿಸಿ",
+        Malayalam: "വീണ്ടും വിശകലനം ചെയ്യുക",
+        Punjabi: "ਦੁਬਾਰਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ",
+        Odia: "ପୁନର୍ବାର ବିଶ୍ଳେଷଣ କରନ୍ତୁ |"
     },
     status_ready: {
         English: "Ready",
@@ -215,15 +293,12 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Marathi: "तयार",
         Tamil: "தயார்",
         Telugu: "సిద్ధం",
-        Bengali: "প্রস্তুত"
-    },
-    status_listening_lang: {
-        English: "Listening for language selection...",
-        Hindi: "भाषा चयन के लिए सुन रहे हैं...",
-        Marathi: "भाषा निवडीसाठी ऐकत आहे...",
-        Tamil: "மொழித் தேர்வைக் கேட்கிறது...",
-        Telugu: "భాష ఎంపిక కోసం వింటోంది...",
-        Bengali: "ভাষা নির্বাচনের জন্য শুনছে..."
+        Bengali: "প্রস্তুত",
+        Gujarati: "તૈયાર",
+        Kannada: "ಸಿದ್ಧವಾಗಿದೆ",
+        Malayalam: "തയ്യാറാണ്",
+        Punjabi: "ਤਿਆਰ",
+        Odia: "ପ୍ରସ୍ତୁତ"
     }
 };
 
