@@ -1,6 +1,22 @@
-export type LanguageCode = 'English' | 'Hindi' | 'Marathi' | 'Tamil' | 'Telugu' | 'Bengali' | 'Gujarati' | 'Kannada' | 'Malayalam' | 'Punjabi' | 'Odia';
+export type LanguageCode = 'English' | 'Hindi' | 'Marathi' | 'Tamil' | 'Telugu' | 'Bengali' | 'Gujarati' | 'Kannada' | 'Malayalam' | 'Punjabi' | 'Odia' | 'Assamese' | 'Manipuri' | 'Bodo';
 
-export const translations: Record<string, Record<LanguageCode, string>> = {
+export const translations: Record<string, Partial<Record<LanguageCode, string>>> = {
+    app_title: {
+        English: "EchoSight",
+        Hindi: "इकोसाइट",
+        Marathi: "इकोसाइट",
+        Tamil: "எக்கோசைட்",
+        Telugu: "ఎకోసైట్",
+        Bengali: "ইকোসাইট",
+        Gujarati: "ઇકોસાઇટ",
+        Kannada: "ಎಕೋಸೈಟ್",
+        Malayalam: "എക്കോസൈറ്റ്",
+        Punjabi: "ਈਕੋਸਾਈਟ",
+        Odia: "ଇକୋସାଇଟ୍",
+        Assamese: "ইক'চাইট",
+        Manipuri: "ইকোসাইট",
+        Bodo: "इकोसाइट"
+    },
     welcome_message: {
         English: "Single tap to hear button name. Double tap to open feature.",
         Hindi: "बटन का नाम सुनने के लिए एक बार टैप करें। फीचर खोलने के लिए दो बार टैप करें।",

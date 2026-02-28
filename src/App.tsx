@@ -222,6 +222,9 @@ export default function App() {
             else if (words.some(w => ['malayalam', 'മലയാളം'].includes(w))) newLang = 'Malayalam';
             else if (words.some(w => ['punjabi', 'ਪੰਜਾਬੀ'].includes(w))) newLang = 'Punjabi';
             else if (words.some(w => ['odia', 'ଓଡ଼ିଆ', 'oriya'].includes(w))) newLang = 'Odia';
+            else if (words.some(w => ['assamese', 'অসমীয়া', 'asamiya'].includes(w))) newLang = 'Assamese';
+            else if (words.some(w => ['manipuri', 'মৈতৈ', 'meitei'].includes(w))) newLang = 'Manipuri';
+            else if (words.some(w => ['bodo', 'बर'].includes(w))) newLang = 'Bodo';
             else if (words.some(w => ['cancel', 'stop', 'rad', 'रद्द'].includes(w))) {
               await speak(t('lang_cancelled', currentLanguage));
               setCurrentPage('home');
@@ -409,6 +412,40 @@ export default function App() {
     </header>
   );
 
+  // Permissions State Hook
+  const [sysPermissions, setSysPermissions] = useState({ camera: 'prompt', mic: 'prompt', location: 'prompt' });
+
+  useEffect(() => {
+    if (currentPage === 'permissions') {
+      const checkPermissions = async () => {
+        try {
+          const cam = await navigator.permissions.query({ name: 'camera' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          const mic = await navigator.permissions.query({ name: 'microphone' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          const loc = await navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          setSysPermissions({ camera: cam, mic, location: loc });
+        } catch { } // If browser blocks query, fail silently and keep as prompt
+      };
+      checkPermissions();
+      // Poll every 2 seconds while page is open so it live-updates if user changes OS settings
+      const interval = setInterval(checkPermissions, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [currentPage]);
+
+  const handleRequestSysPermission = async (type: string) => {
+    try {
+      if (type === 'camera') {
+        await navigator.mediaDevices.getUserMedia({ video: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
+      } else if (type === 'microphone') {
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
+      } else if (type === 'geolocation') {
+        await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+      }
+    } catch (e) {
+      speak(`Please click the browser lock icon to enable ${type} permission.`);
+    }
+  };
+
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
       <video ref={videoRef} className="hidden" playsInline muted />
@@ -416,7 +453,7 @@ export default function App() {
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
-            {renderHeader('EchoSight', false)}
+            {renderHeader(t('app_title', currentLanguage) || 'EchoSight', false)}
 
             <div className="flex-none p-4 min-h-[100px] flex flex-col items-center justify-center">
               {status !== t('status_ready', currentLanguage) && (
@@ -765,21 +802,33 @@ export default function App() {
                     <Eye className="text-blue-500" />
                     <span className="font-medium">Camera</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.camera === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('camera')} className="text-blue-500 text-sm font-bold border border-blue-500 px-3 py-1 rounded-full hover:bg-blue-50">Request / Off</button>
+                  )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <Mic className="text-purple-500" />
                     <span className="font-medium">Microphone</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.mic === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('microphone')} className="text-purple-500 text-sm font-bold border border-purple-500 px-3 py-1 rounded-full hover:bg-purple-50">Request / Off</button>
+                  )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
-                    <Map className="text-emerald-500" />
+                    <MapIcon className="text-emerald-500" />
                     <span className="font-medium">Location</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.location === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">Granted</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('geolocation')} className="text-emerald-500 text-sm font-bold border border-emerald-500 px-3 py-1 rounded-full hover:bg-emerald-50">Request / Off</button>
+                  )}
                 </div>
               </div>
               <p className="text-sm mt-6 opacity-60 text-center">

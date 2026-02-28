@@ -12,7 +12,10 @@ export const LANGUAGE_CONFIG = {
   'Kannada': { code: 'kn-IN', voice: 'meera', confirmText: 'ನಿಮ್ಮ ಭಾಷೆಯ ಆಯ್ಕೆಯನ್ನು ಉಳಿಸಲಾಗಿದೆ.' },
   'Malayalam': { code: 'ml-IN', voice: 'meera', confirmText: 'നിങ്ങളുടെ ഭാഷാ മുൻഗണന സംരക്ഷിച്ചു.' },
   'Punjabi': { code: 'pa-IN', voice: 'meera', confirmText: 'ਤੁਹਾਡੀ ਭਾਸ਼ਾ ਦੀ ਤਰਜੀਹ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ ਹੈ।' },
-  'Odia': { code: 'od-IN', voice: 'meera', confirmText: 'ଆପଣଙ୍କର ଭାଷା ପସନ୍ଦ ସଂରକ୍ଷଣ କରାଯାଇଛି |' }
+  'Odia': { code: 'od-IN', voice: 'meera', confirmText: 'ଆପଣଙ୍କର ଭାଷା ପସନ୍ଦ ସଂରକ୍ଷଣ କରାଯାଇଛି |' },
+  'Assamese': { code: 'as-IN', voice: 'meera', confirmText: 'আপোনাৰ ভাষা পছন্দ সংৰক্ষণ কৰা হৈছে।' },
+  'Manipuri': { code: 'mni-IN', voice: 'meera', confirmText: 'নহাক্কী লোনগী পামজবা অদু সেভ তৌরে।' },
+  'Bodo': { code: 'brx-IN', voice: 'meera', confirmText: 'नोंथांनि रावखौ रैखा खालामनाय जाबाय।' }
 };
 
 export function parseSpokenNumber(text: string): number | null {
