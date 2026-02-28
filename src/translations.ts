@@ -248,6 +248,19 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Punjabi: "ਭਾਸ਼ਾ",
         Odia: "ଭାଷା"
     },
+    btn_notify: {
+        English: "Notify Area",
+        Hindi: "अधिसूचित क्षेत्र",
+        Marathi: "अधिसूचित क्षेत्र",
+        Tamil: "அறிவிப்பு பகுதி",
+        Telugu: "ప్రాంతాన్ని తెలియజేయండి",
+        Bengali: "অবহিত এলাকা",
+        Gujarati: "સૂચિત વિસ્તાર",
+        Kannada: "ತಿಳಿಸುವ ಪ್ರದೇಶ",
+        Malayalam: "അറിയിപ്പ് പ്രദേശം",
+        Punjabi: "ਸੂਚਿਤ ਖੇਤਰ",
+        Odia: "ସୂଚିତ ଅଞ୍ଚଳ"
+    },
     btn_permissions: {
         English: "Permissions",
         Hindi: "अनुमतियां",

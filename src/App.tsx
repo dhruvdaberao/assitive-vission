@@ -88,8 +88,20 @@ export default function App() {
 
     const runPageLogic = async () => {
       if (currentPage === 'navigate') {
-        // Wait for manual map tap instead of purely voice
-        await speak("Please tap the map to set a destination for WhatsApp Geofencing.");
+        setDestination('');
+        try {
+          const dest = await speakAndListen(t('nav_prompt', currentLanguage), 3);
+          if (isActive && dest) {
+            setDestination(dest);
+            await speak(t('nav_confirm', currentLanguage));
+            handleNavigate(dest);
+          }
+        } catch (e) {
+          if (isActive) {
+            await speak(t('nav_fail', currentLanguage));
+            setCurrentPage('home');
+          }
+        }
       } else if (currentPage === 'find') {
         setTargetObject('');
         try {
@@ -161,11 +173,17 @@ export default function App() {
         } catch (e) {
           if (isActive) setCurrentPage('home');
         }
+      } else if (currentPage === 'describe') {
         await speak(t('desc_start', currentLanguage));
         handleDescribeScene();
       } else if (currentPage === 'currency') {
         await speak(t('currency_start', currentLanguage));
         handleIdentifyCurrency();
+      } else if (currentPage === 'notify') {
+        // Guide user based on their language
+        const p1 = t('btn_notify', currentLanguage) || "Notify Area";
+        const p2 = currentLanguage === 'English' ? ". Please type receiver details and pick a destination." : "";
+        await speak(p1 + p2);
       }
     };
 
@@ -188,7 +206,7 @@ export default function App() {
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, "Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences.");
+        const response = await analyzeScene(image, `Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences. Reply ONLY in the ${currentLanguage} language.`);
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
@@ -201,38 +219,57 @@ export default function App() {
   };
 
   const handleIdentifyCurrency = async () => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
     setProcessing(true);
     setStatus("Identifying currency...");
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, "Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'");
+        const response = await analyzeScene(image, `Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'. Reply ONLY in the ${currentLanguage} language.`);
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
-      speak("Service unavailable.");
+      speak(t('service_unavail', currentLanguage));
     } finally {
       setProcessing(false);
     }
   };
 
   const handleFindObject = async (objName: string) => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
     setProcessing(true);
     setStatus(`Looking for ${objName}...`);
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short.`);
+        const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short. Reply ONLY in the ${currentLanguage} language.`);
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
-      speak("Service unavailable.");
+      speak(t('service_unavail', currentLanguage));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleNavigate = async (dest: string) => {
+    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    setProcessing(true);
+    setStatus(`Navigating to ${dest}...`);
+    try {
+      const image = captureImage();
+      if (image) {
+        const response = await analyzeScene(image, `The user wants to navigate to: ${dest}. Describe the immediate path forward, identifying any obstacles, doors, or turns. Keep it under 2 sentences. Reply ONLY in the ${currentLanguage} language.`);
+        setStatus(response);
+        await speak(response);
+        setTimeout(() => setCurrentPage('home'), 1000);
+      }
+    } catch (e) {
+      speak(t('service_unavail', currentLanguage));
     } finally {
       setProcessing(false);
     }
@@ -300,11 +337,9 @@ export default function App() {
                 <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-                <AccessibleButton icon={<Bell size={36} />} label="Notify Area" onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Bell size={36} />} label={t('btn_notify', currentLanguage) || "Notify Area"} onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
-                <div className="col-span-2">
-                  <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
-                </div>
+                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
               </div>
             </div>
           </motion.div>
@@ -312,32 +347,14 @@ export default function App() {
 
         {currentPage === 'navigate' && (
           <motion.div key="navigate" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Live Navigation')}
-            <div className="flex-1 bg-gray-100 relative overflow-hidden flex flex-col">
-              <div className="flex-1 z-0 w-full relative">
-                <MapContainer center={[19.0760, 72.8777]} zoom={13} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  />
-                  {destCoords && <Marker position={[destCoords.lat, destCoords.lng]} />}
-                  <MapClickHandler onMapClick={(lat, lng) => {
-                    setDestCoords({ lat, lng });
-                    setDestination(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
-                    speak("Destination set. Tracking active.");
-                  }} />
-                </MapContainer>
+            {renderHeader(t('btn_navigate', currentLanguage) || 'Live Navigation')}
+            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
+                {destination ? `Navigating to: ${destination}` : "Listening..."}
+                <br />
+                <span className="text-lg font-normal">{status}</span>
               </div>
-
-              {destCoords && (
-                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-11/12 max-w-md bg-white rounded-2xl shadow-xl p-4 z-[1000] border-2 border-emerald-500 text-center">
-                  <h3 className="font-bold text-lg mb-1">Tracking Active 🟢</h3>
-                  <p className="text-gray-600 text-sm mb-2">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
-                  <p className="text-emerald-600 font-semibold text-sm">
-                    {hasReached ? "You have arrived!" : "On your way..."}
-                  </p>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
@@ -437,6 +454,27 @@ export default function App() {
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0">
+                  <MapContainer center={[19.0760, 72.8777]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                    {destCoords && <Marker position={[destCoords.lat, destCoords.lng]} />}
+                    <MapClickHandler onMapClick={(lat, lng) => {
+                      setDestCoords({ lat, lng });
+                      setDestination(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+                      speak("Destination set. Tracking active.");
+                    }} />
+                  </MapContainer>
+                </div>
+                {destCoords && (
+                  <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                    <h4 className="font-bold text-emerald-800">Tracking Active 🟢</h4>
+                    <p className="text-emerald-600 text-sm">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
+                  </div>
+                )}
               </div>
 
               {/* Number List Box */}
