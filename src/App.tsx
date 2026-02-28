@@ -10,8 +10,16 @@ import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } fr
 import { analyzeScene } from './services/gemini';
 import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { QRCodeSVG } from 'qrcode.react';
+
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 14);
+  }, [center, map]);
+  return null;
+}
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -70,6 +78,29 @@ export default function App() {
   const [notifyName, setNotifyName] = useState(() => localStorage.getItem('notifyName') || '');
   const [sandboxCode, setSandboxCode] = useState(() => localStorage.getItem('sandboxCode') || '');
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
+
+  const handleSearchLocation = async () => {
+    if (!searchQuery.trim()) return;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setDestCoords({ lat, lng: lon });
+        setMapCenter([lat, lon]);
+        setDestination(data[0].display_name.split(',')[0]);
+        speak("Location found. Tracking active.");
+      } else {
+        speak("Location not found.");
+      }
+    } catch (e) {
+      speak("Error searching location.");
+    }
+  };
+
   // Persist Notify Details
   useEffect(() => {
     localStorage.setItem('notifyNumbers', JSON.stringify(notifyNumbers));
@@ -90,7 +121,7 @@ export default function App() {
     destinationName: destination || 'Custom Location',
     userName: notifyName, // Use the new Notify Name for location updates
     notifyNumbers: notifyNumbers.length > 0 ? notifyNumbers : [emergencyData.contactPhone], // Fallback to emergency contact if empty
-    enabled: currentPage === 'navigate' && destCoords !== null
+    enabled: destCoords !== null
   });
 
   // Welcome message
@@ -474,8 +505,26 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0">
-                  <MapContainer center={[19.0760, 72.8777]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <div className="mt-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSearchLocation()}
+                    placeholder="Search for a location..."
+                    className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
+                  />
+                  <button
+                    onClick={handleSearchLocation}
+                    className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+                  >
+                    <Search size={20} />
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0">
+                  <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                    <MapUpdater center={mapCenter} />
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
