@@ -10,6 +10,7 @@ import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } fr
 import { analyzeScene } from './services/gemini';
 import { Search, Eye, Map, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { t } from './translations';
 
 const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
 
@@ -17,7 +18,7 @@ export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
 
-  const [status, setStatus] = useState('Ready');
+  const [status, setStatus] = useState(t('status_ready', localStorage.getItem('appLanguage') || 'English'));
   const [processing, setProcessing] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(localStorage.getItem('appLanguage') || 'English');
   const [currentPage, setCurrentPage] = useState('home');
@@ -40,10 +41,10 @@ export default function App() {
   // Welcome message
   useEffect(() => {
     const timer = setTimeout(() => {
-      speak("Single tap to hear button name. Double tap to open feature.");
+      speak(t('welcome_message', currentLanguage));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [speak]);
+  }, [speak, currentLanguage]);
 
   // --- Page Lifecycle & Voice Prompts ---
   useEffect(() => {
@@ -53,58 +54,59 @@ export default function App() {
       if (currentPage === 'navigate') {
         setDestination('');
         try {
-          const dest = await speakAndListen("Where do you want to go?", 2);
+          const dest = await speakAndListen(t('nav_prompt', currentLanguage), 2);
           if (isActive && dest) {
             setDestination(dest);
-            await speak(`Navigating to ${dest}. Path clear. Walk forward.`);
+            await speak(dest + ". " + t('nav_confirm', currentLanguage));
             setStatus(`Navigating to ${dest}`);
           }
         } catch (e) {
           if (isActive) {
-            await speak("No destination detected. Returning to home.");
+            await speak(t('nav_fail', currentLanguage));
             setCurrentPage('home');
           }
         }
       } else if (currentPage === 'find') {
         setTargetObject('');
         try {
-          const obj = await speakAndListen("What are you looking for?", 2);
+          const obj = await speakAndListen(t('find_prompt', currentLanguage), 2);
           if (isActive && obj) {
             setTargetObject(obj);
-            await speak(`Looking for ${obj}. Scanning area.`);
+            await speak(obj + ". " + t('find_confirm', currentLanguage));
             handleFindObject(obj);
           }
         } catch (e) {
           if (isActive) {
-            await speak("No object detected. Returning to home.");
+            await speak(t('find_fail', currentLanguage));
             setCurrentPage('home');
           }
         }
       } else if (currentPage === 'language') {
         try {
-          const ans = await speakAndListen("Do you want to change language? Say yes or no.");
+          const ans = await speakAndListen(t('lang_prompt_1', currentLanguage));
           const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
 
-          if (ansLower.includes('yes') || ansLower.includes('haan') || ansLower.includes('हाँ') || ansLower.includes('yeah') || ansLower.includes('yep')) {
+          if (ansLower.includes('yes') || ansLower.includes('haan') || ansLower.includes('हाँ') || ansLower.includes('yeah') || ansLower.includes('yep') || ansLower.includes('हो') || ansLower.includes('ஆம்') || ansLower.includes('అవును') || ansLower.includes('হ্যাঁ')) {
             let validChoice = false;
             let retries = 0;
 
             while (isActive && !validChoice && retries < 3) {
               try {
-                const numStr = await speakAndListen("Say 1 for Hindi. Say 2 for Marathi. Say 3 for English. Say 4 for Tamil. Say 5 for Telugu. Say 0 to cancel.");
+                const numStr = await speakAndListen(t('lang_prompt_2', currentLanguage));
                 const spoken = numStr.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
                 console.log("Language spoken input:", spoken);
 
                 let newLang = '';
+                const words = spoken.split(/\s+/);
 
-                if (spoken.match(/\b(1|one|ek|एक|first|won|wan|hindi)\b/)) newLang = 'Hindi';
-                else if (spoken.match(/\b(2|two|do|दो|second|too|to|marathi)\b/)) newLang = 'Marathi';
-                else if (spoken.match(/\b(3|three|teen|तीन|third|tree|english)\b/)) newLang = 'English';
-                else if (spoken.match(/\b(4|four|char|चार|fourth|for|tamil)\b/)) newLang = 'Tamil';
-                else if (spoken.match(/\b(5|five|panch|पांच|fifth|telugu)\b/)) newLang = 'Telugu';
-                else if (spoken.match(/\b(0|zero|shunya|शून्य|cancel|stop|exit)\b/)) {
+                if (words.some(w => ['1', 'one', 'ek', 'एक', 'first', 'won', 'wan', 'hindi', 'हिंदी'].includes(w))) newLang = 'Hindi';
+                else if (words.some(w => ['2', 'two', 'do', 'दो', 'second', 'too', 'to', 'marathi', 'मराठी', 'don', 'दोन'].includes(w))) newLang = 'Marathi';
+                else if (words.some(w => ['3', 'three', 'teen', 'तीन', 'third', 'tree', 'english', 'अंग्रेज़ी', 'इंग्रजी'].includes(w))) newLang = 'English';
+                else if (words.some(w => ['4', 'four', 'char', 'चार', 'fourth', 'for', 'tamil', 'தமிழ்', 'nanku', 'நான்கு'].includes(w))) newLang = 'Tamil';
+                else if (words.some(w => ['5', 'five', 'panch', 'पांच', 'fifth', 'telugu', 'తెలుగు', 'aidu', 'ఐదు'].includes(w))) newLang = 'Telugu';
+                else if (words.some(w => ['0', 'zero', 'shunya', 'शून्य', 'cancel', 'stop', 'exit'].includes(w))) {
                   validChoice = true;
-                  await speak("Cancelled.");
+                  await speak(t('lang_cancelled', currentLanguage));
                   break;
                 }
 
@@ -127,32 +129,32 @@ export default function App() {
                   console.warn("Could not parse language input:", spoken);
                   retries++;
                   if (retries < 3) {
-                    await speak("I didn't catch that. Please say the number or the language name.");
+                    await speak(t('lang_invalid_2', currentLanguage));
                   }
                 }
               } catch (e) {
                 console.error("Speech recognition error during language selection:", e);
                 retries++;
                 await new Promise(r => setTimeout(r, 600));
-                if (isActive && retries < 3) await speak("Please repeat your choice.");
+                if (isActive && retries < 3) await speak(t('lang_repeat', currentLanguage));
               }
             }
             if (!validChoice && isActive) {
-              await speak("Too many invalid attempts. Returning to home.");
+              await speak(t('lang_invalid_3', currentLanguage));
             }
           } else {
-            await speak("Cancelled.");
+            await speak(t('lang_cancelled', currentLanguage));
           }
         } catch (e) {
-          if (isActive) await speak("Please repeat.");
+          if (isActive) await speak(t('lang_repeat', currentLanguage));
         } finally {
           if (isActive) setCurrentPage('home');
         }
       } else if (currentPage === 'describe') {
-        await speak("Analyzing surroundings.");
+        await speak(t('desc_start', currentLanguage));
         handleDescribeScene();
       } else if (currentPage === 'currency') {
-        await speak("Show currency in front of camera.");
+        await speak(t('currency_start', currentLanguage));
         handleIdentifyCurrency();
       }
     };
@@ -170,9 +172,9 @@ export default function App() {
   // --- Feature Handlers ---
   // Note: In production, these call our backend (e.g., POST /api/v1/vision/describe)
   const handleDescribeScene = async () => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
     setProcessing(true);
-    setStatus("Analyzing scene...");
+    setStatus(t('status_analyzing', currentLanguage));
     try {
       const image = captureImage();
       if (image) {
@@ -182,7 +184,7 @@ export default function App() {
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
-      speak("Service unavailable.");
+      speak(t('service_unavail', currentLanguage));
     } finally {
       setProcessing(false);
     }
@@ -276,14 +278,14 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 p-4 pb-8 overflow-y-auto">
-              <AccessibleButton icon={<Map size={36} />} label="Navigate" onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Search size={36} />} label="Find Object" onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Eye size={36} />} label="Describe Scene" onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Banknote size={36} />} label="Currency" onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Languages size={36} />} label="Language" onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Shield size={36} />} label="Permissions" onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
+              <AccessibleButton icon={<Map size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
+              <AccessibleButton icon={<Search size={36} />} label={t('btn_find', currentLanguage)} onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
+              <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
+              <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
+              <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
+              <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
               <div className="col-span-2">
-                <AccessibleButton icon={<HeartPulse size={36} />} label="Emergency Info" onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
+                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
               </div>
             </div>
           </motion.div>
@@ -325,7 +327,7 @@ export default function App() {
               <p className={`text-xl font-medium text-center leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{status}</p>
               <AccessibleButton
                 icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />}
-                label="Analyze Again"
+                label={t('btn_analyze_again', currentLanguage)}
                 onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()}
                 speak={speak}
                 disabled={processing}
@@ -340,7 +342,7 @@ export default function App() {
             {renderHeader('Change Language')}
             <div className="flex-1 flex items-center justify-center p-6">
               <p className="text-2xl font-medium text-center">
-                Listening for language selection...
+                {t('status_listening_lang', currentLanguage)}
               </p>
             </div>
           </motion.div>
