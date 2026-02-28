@@ -57,7 +57,7 @@ const BannerCarousel = () => {
   }, [images.length]);
 
   return (
-    <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-transparent overflow-hidden mb-4 mt-4 shadow-sm">
+    <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-transparent overflow-hidden mb-4 shadow-sm">
       <AnimatePresence>
         <motion.img
           key={currentIndex}
@@ -448,7 +448,9 @@ export default function App() {
             className="max-h-[44px] w-auto object-contain drop-shadow-md brightness-0 invert"
           />
         )}
-        <h1 className={`${showBack ? 'text-xl' : 'text-2xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`}>{title}</h1>
+        <h1 className={`${showBack ? 'text-xl' : 'text-3xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`} style={{ fontFamily: "'Outfit', sans-serif" }}>
+          {title.replace('EchoSight', 'Echo-Sight')}
+        </h1>
       </div>
       <div className="w-1/4 flex justify-end items-center gap-3">
         {isListening && <Mic className="text-white animate-pulse" size={20} />}
@@ -500,18 +502,20 @@ export default function App() {
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
             {renderHeader(t('app_title', currentLanguage) || 'EchoSight', false)}
 
-            <div className="flex-none p-4 min-h-[0px] flex flex-col items-center justify-center">
-              {status !== t('status_ready', currentLanguage) && (
-                <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
-                  <p className="text-lg font-semibold">{status}</p>
-                </div>
-              )}
-              {cameraError && (
-                <div className="bg-red-50 text-red-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
-                  <p className="text-sm font-semibold">Camera Error: {cameraError}</p>
-                </div>
-              )}
-            </div>
+            {(status !== t('status_ready', currentLanguage) || cameraError) && (
+              <div className="flex-none px-4 pt-4 flex flex-col items-center justify-center">
+                {status !== t('status_ready', currentLanguage) && (
+                  <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                    <p className="text-lg font-semibold">{status}</p>
+                  </div>
+                )}
+                {cameraError && (
+                  <div className="bg-red-50 text-red-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                    <p className="text-sm font-semibold">Camera Error: {cameraError}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <BannerCarousel />
 

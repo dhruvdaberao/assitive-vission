@@ -8,17 +8,17 @@
   "description": "Voice-first navigation and environment analysis application for visually impaired individuals.",
   "icons": [
     {
-      "src": "eye.png",
+      "src": "eye-padded.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "eye.png",
+      "src": "eye-padded.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "eye.png",
+      "src": "eye-padded.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
