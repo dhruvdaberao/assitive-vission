@@ -8,7 +8,7 @@ import { useCamera } from './hooks/useCamera';
 import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } from './hooks/useSpeech';
 // In a production app, this would call our custom backend, not Gemini directly.
 import { analyzeScene } from './services/gemini';
-import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2 } from 'lucide-react';
+import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2, Info, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { QRCodeSVG } from 'qrcode.react';
@@ -35,6 +35,40 @@ import { t } from './translations';
 import { useGeofencing } from './hooks/useGeofencing';
 
 const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+
+const BannerCarousel = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const images = ['/images/banner/banner1.png', '/images/banner/banner2.png', '/images/banner/banner3.png'];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [images.length]);
+
+  return (
+    <div className="relative w-full max-w-md mx-auto aspect-[21/9] overflow-hidden rounded-2xl shadow-md mb-4 mt-2">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={currentIndex}
+          src={images[currentIndex]}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
+          className="absolute inset-0 w-full h-full object-cover"
+          alt={`Banner ${currentIndex + 1}`}
+        />
+      </AnimatePresence>
+      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-10">
+        {images.map((_, idx) => (
+          <div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50'}`} />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
@@ -380,18 +414,20 @@ export default function App() {
   };
 
   // --- Theme Classes ---
-  const bgClass = isDarkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900";
-  const cardClass = isDarkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900";
-  const headerClass = isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200";
-  const inputClass = isDarkMode ? "bg-gray-800 border-gray-700 text-white focus:ring-white" : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-gray-900";
+  // Requested Light Mode: bg #F4F9FF, cards white, text #0D47A1. Dark Mode: bg #0A192F, cards #112240, text #E3F2FD.
+  const bgClass = isDarkMode ? "bg-[#0A192F] text-[#E3F2FD]" : "bg-[#F4F9FF] text-[#0D47A1]";
+  const cardClass = isDarkMode ? "bg-[#112240] border-[#112240] text-[#E3F2FD] shadow-md" : "bg-white border-white text-[#0D47A1] shadow-md";
+  const headerClass = "bg-gradient-to-r from-[#1E88E5] to-[#42A5F5] border-transparent text-white shadow-lg";
+  const inputClass = isDarkMode ? "bg-[#0A192F] border-[#42A5F5] text-[#E3F2FD] focus:ring-[#42A5F5]" : "bg-[#E3F2FD] border-[#1E88E5] text-[#0D47A1] focus:ring-[#1E88E5]";
+  const buttonGradientClass = "bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] text-white border-transparent";
 
   // --- Render Helpers ---
   const renderHeader = (title: string, showBack = true) => (
-    <header className={`fixed top-0 w-full z-[1000] h-16 px-4 border-b flex justify-between items-center shadow-sm ${headerClass}`}>
+    <header className={`fixed top-0 w-full z-[1000] h-16 px-4 flex justify-between items-center ${headerClass}`}>
       <div className="w-1/4 flex justify-start">
         {showBack && (
-          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); setDestCoords(null); }} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
-            <ArrowLeft className={isDarkMode ? "text-white" : "text-gray-900"} />
+          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); setDestCoords(null); }} className="p-2 rounded-full hover:bg-white/20 transition-colors">
+            <ArrowLeft className="text-white" />
           </button>
         )}
       </div>
@@ -400,14 +436,14 @@ export default function App() {
           <img
             src="/walking-stick.png"
             alt="App Logo"
-            className="max-h-[44px] w-auto object-contain drop-shadow-sm"
+            className="max-h-[44px] w-auto object-contain drop-shadow-md brightness-0 invert"
           />
         )}
-        <h1 className={`${showBack ? 'text-xl' : 'text-2xl'} font-extrabold tracking-tight whitespace-nowrap`}>{title}</h1>
+        <h1 className={`${showBack ? 'text-xl' : 'text-2xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`}>{title}</h1>
       </div>
       <div className="w-1/4 flex justify-end items-center gap-3">
-        {isListening && <Mic className="text-red-500 animate-pulse" size={20} />}
-        {isSpeaking && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+        {isListening && <Mic className="text-white animate-pulse" size={20} />}
+        {isSpeaking && <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}
       </div>
     </header>
   );
@@ -455,7 +491,7 @@ export default function App() {
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
             {renderHeader(t('app_title', currentLanguage) || 'EchoSight', false)}
 
-            <div className="flex-none p-4 min-h-[100px] flex flex-col items-center justify-center">
+            <div className="flex-none p-4 min-h-[0px] flex flex-col items-center justify-center">
               {status !== t('status_ready', currentLanguage) && (
                 <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
                   <p className="text-lg font-semibold">{status}</p>
@@ -468,6 +504,8 @@ export default function App() {
               )}
             </div>
 
+            <BannerCarousel />
+
             <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
               <div className="grid grid-cols-2 gap-4 w-full h-full content-start max-w-md mx-auto">
                 <AccessibleButton icon={<MapIcon size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
@@ -477,7 +515,9 @@ export default function App() {
                 <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Bell size={36} />} label={t('btn_notify', currentLanguage) || "Notify Area"} onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
-                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
+                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 border-red-700 text-white" />
+                <AccessibleButton icon={<Info size={36} />} label="About Us" onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<HelpCircle size={36} />} label="How To Use" onActivate={() => { setCurrentPage('how-to-use'); }} speak={speak} color={cardClass} />
               </div>
             </div>
           </motion.div>
@@ -486,8 +526,8 @@ export default function App() {
         {currentPage === 'navigate' && (
           <motion.div key="navigate" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(t('btn_navigate', currentLanguage) || 'Live Navigation')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
                 {destination ? `Navigating to: ${destination}` : "Listening..."}
                 <br />
@@ -500,8 +540,8 @@ export default function App() {
         {currentPage === 'find' && (
           <motion.div key="find" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader('Find Object')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
                 {targetObject ? `Finding: ${targetObject}` : "Listening..."}
                 <br />
@@ -514,18 +554,18 @@ export default function App() {
         {(currentPage === 'describe' || currentPage === 'currency') && (
           <motion.div key="camera-feature" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(currentPage === 'describe' ? 'Describe Scene' : 'Identify Currency')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
             </div>
-            <div className={`p-6 border-t min-h-[200px] flex flex-col items-center justify-center gap-6 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-              <p className={`text-xl font-medium text-center leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{status}</p>
+            <div className={`p-6 border-t border-transparent min-h-[200px] flex flex-col items-center justify-center gap-6 ${cardClass}`}>
+              <p className={`text-xl font-medium text-center leading-relaxed text-[#0D47A1] dark:text-[#E3F2FD]`}>{status}</p>
               <AccessibleButton
                 icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />}
                 label={t('btn_analyze_again', currentLanguage)}
                 onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()}
                 speak={speak}
                 disabled={processing}
-                color={isDarkMode ? "bg-white text-gray-900" : "bg-gray-900 text-white"}
+                color={buttonGradientClass}
               />
             </div>
           </motion.div>
@@ -563,7 +603,7 @@ export default function App() {
         )}
 
         {currentPage === 'notify' && (
-          <motion.div key="notify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex-1 flex flex-col ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+          <motion.div key="notify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex-1 flex flex-col ${bgClass}`}>
             {renderHeader('Notify Contacts')}
             <div className="flex-1 p-6 overflow-y-auto space-y-8 pb-20">
 
@@ -629,7 +669,7 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0 relative">
+                <div className={`mt-4 rounded-xl overflow-hidden border shadow-sm h-64 sticky w-full z-0 relative ${isDarkMode ? 'border-[#42A5F5]/30' : 'border-[#1E88E5]/30'}`}>
                   {isLocationSaved && <div className="absolute inset-0 z-50 bg-black/5 cursor-not-allowed" />}
                   <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
                     <MapUpdater center={mapCenter} />
@@ -647,7 +687,7 @@ export default function App() {
                   </MapContainer>
                 </div>
                 {destCoords && (
-                  <div className={`mt-4 p-3 rounded-xl border text-center transition-colors ${isLocationSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                  <div className={`mt-4 p-3 rounded-xl border text-center transition-colors ${isLocationSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : `${inputClass}`}`}>
                     <h4 className="font-bold flex items-center justify-center gap-2">
                       {isLocationSaved ? <>Tracking Active 🟢</> : <>Tracking Paused ⏸️</>}
                     </h4>
@@ -685,7 +725,7 @@ export default function App() {
                 <ul className="space-y-2">
                   {notifyNumbers.length === 0 && <p className="text-sm opacity-50 text-center py-2">No numbers added. Will fallback to Emergency Contact.</p>}
                   {notifyNumbers.map((num) => (
-                    <li key={num} className={`flex justify-between items-center p-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-100 shadow-sm'}`}>
+                    <li key={num} className={`flex justify-between items-center p-3 rounded-xl ${inputClass}`}>
                       <span className="font-medium tracking-wide">{num}</span>
                       <button onClick={() => setNotifyNumbers(notifyNumbers.filter(n => n !== num))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                         <Trash2 size={18} />
@@ -757,7 +797,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div className="mt-8 pt-6 border-t border-[#1E88E5]/20 dark:border-[#42A5F5]/30">
                   <h2 className="text-2xl font-bold mb-4">Emergency Contact</h2>
                   <div className="mb-4">
                     <label className="block text-sm font-medium opacity-70 mb-1">Contact Name</label>
@@ -837,6 +877,70 @@ export default function App() {
             </div>
           </motion.div>
         )}
+        {currentPage === 'about' && (
+          <motion.div key="about" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+            {renderHeader('About EchoSight')}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Overview</h2>
+                <p className="text-lg leading-relaxed opacity-90">
+                  EchoSight is an AI-powered accessibility application designed to assist visually impaired individuals in navigating and understanding their surroundings.
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Features</h2>
+                <ul className="list-disc pl-5 space-y-2 text-lg opacity-90">
+                  <li>Scene Description using AI</li>
+                  <li>Currency Detection</li>
+                  <li>Smart Navigation</li>
+                  <li>Family Safety Notifications</li>
+                  <li>WhatsApp Alert System</li>
+                  <li>Real-time Location Tracking</li>
+                </ul>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">Mission</h2>
+                <p className="text-lg leading-relaxed font-medium italic opacity-90">
+                  "To empower independence and safety for visually impaired users using intelligent technology."
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {currentPage === 'how-to-use' && (
+          <motion.div key="how-to-use" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+            {renderHeader('How To Use')}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Eye size={24} /> Scene Description</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  Tap the "Describe Area" button. Point your camera forward, and the AI will analyze objects, lighting, and layout, returning detailed voice feedback of your surroundings.
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><MapIcon size={24} /> Navigation</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  Tap "Navigate". Speak your desired destination. The intelligent AI will scan your current visual field and guide your steps around obstacles toward your goal in real-time.
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Bell size={24} /> Notify Feature</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  1. Add trusted WhatsApp numbers.<br />
+                  2. Search for your remote destination on the map and tap "Save" to lock tracking.<br />
+                  3. The system will automatically live-update your loved ones as you move.
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-500"><HeartPulse size={24} /> SOS</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  In case of danger, Double-Tap the Emergency button. Your device will immediately flash an alert, dial your primary emergency contact line, and sound an alarm.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
@@ -852,7 +956,7 @@ interface AccessibleButtonProps {
   key?: string;
 }
 
-function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-gray-900" }: AccessibleButtonProps) {
+function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-[#0D47A1] border-white shadow-md dark:bg-[#112240] dark:text-[#E3F2FD] dark:border-[#112240]" }: AccessibleButtonProps) {
   const handleTap = useAccessibleButton(label, onActivate, speak);
 
   return (
@@ -860,7 +964,7 @@ function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "b
       whileTap={{ scale: 0.95 }}
       onClick={handleTap}
       disabled={disabled}
-      className={`flex flex-col items-center justify-center p-6 rounded-2xl shadow-sm border ${color} ${disabled ? 'opacity-50' : 'active:opacity-80'} transition-colors touch-manipulation`}
+      className={`flex flex-col items-center justify-center p-6 rounded-[16px] shadow-sm border ${color} ${disabled ? 'opacity-50' : 'active:opacity-80'} transition-colors touch-manipulation`}
     >
       <div className="mb-3 pointer-events-none">{icon}</div>
       <span className="text-lg font-semibold tracking-tight pointer-events-none">{label}</span>
