@@ -284,8 +284,14 @@ export default function App() {
       const image = captureImage();
       if (image) {
         const response = await analyzeScene(image, `Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences. Reply ONLY in the ${currentLanguage} language.`);
-        setStatus(response);
-        await speak(response);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
@@ -303,8 +309,14 @@ export default function App() {
       const image = captureImage();
       if (image) {
         const response = await analyzeScene(image, `Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'. Reply ONLY in the ${currentLanguage} language.`);
-        setStatus(response);
-        await speak(response);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
@@ -322,8 +334,14 @@ export default function App() {
       const image = captureImage();
       if (image) {
         const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short. Reply ONLY in the ${currentLanguage} language.`);
-        setStatus(response);
-        await speak(response);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {
@@ -341,8 +359,14 @@ export default function App() {
       const image = captureImage();
       if (image) {
         const response = await analyzeScene(image, `The user wants to navigate to: ${dest}. Describe the immediate path forward, identifying any obstacles, doors, or turns. Keep it under 2 sentences. Reply ONLY in the ${currentLanguage} language.`);
-        setStatus(response);
-        await speak(response);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
     } catch (e) {

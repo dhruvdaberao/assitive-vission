@@ -8,7 +8,7 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
 
   const ai = new GoogleGenAI({ apiKey });
   const base64Data = base64Image.split(',')[1];
-  
+
   for (let i = 0; i <= retries; i++) {
     try {
       const response = await ai.models.generateContent({
@@ -30,29 +30,25 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
       return response.text || "I couldn't analyze the scene.";
     } catch (error: unknown) {
       console.error(`Gemini API Error (Attempt ${i + 1}):`, error);
-      
+
       const err = error as any;
-      
+
       if (err.status === 401 || err.message?.includes('401') || err.message?.includes('API key not valid')) {
         return "Vision API key invalid.";
       }
-      
+
       if (err.status === 429 || err.message?.includes('429') || err.message?.includes('quota')) {
-        if (i < retries) {
-          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-          continue;
-        }
-        return "Vision service rate limit exceeded.";
+        return "TOKENS_FINISHED";
       }
-      
+
       if (i < retries) {
         await new Promise(r => setTimeout(r, 1000 * (i + 1)));
         continue;
       }
-      
+
       return "Vision service temporarily unavailable.";
     }
   }
-  
+
   return "Error connecting to the vision service.";
 }

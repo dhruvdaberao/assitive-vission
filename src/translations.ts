@@ -312,6 +312,19 @@ export const translations: Record<string, Record<LanguageCode, string>> = {
         Malayalam: "തയ്യാറാണ്",
         Punjabi: "ਤਿਆਰ",
         Odia: "ପ୍ରସ୍ତୁତ"
+    },
+    tokens_finished: {
+        English: "Tokens are finished. Please check your account.",
+        Hindi: "टोकन समाप्त हो गए हैं।",
+        Marathi: "टोकन्स संपले आहेत.",
+        Tamil: "டோக்கன்கள் முடிந்துவிட்டன.",
+        Telugu: "టోకెన్లు పూర్తయ్యాయి.",
+        Bengali: "টোকেন শেষ হয়ে গেছে।",
+        Gujarati: "ટોકન્સ સમાપ્ત થઈ ગયા છે.",
+        Kannada: "ಟೋಕನ್‌ಗಳು ಮುಗಿದಿವೆ.",
+        Malayalam: "ടോക്കണുകൾ പൂർത്തിയായി.",
+        Punjabi: "ਟੋਕਨ ਖਤਮ ਹੋ ਗਏ ਹਨ।",
+        Odia: "ଟୋକନ୍ ଶେଷ ହୋଇଛି |"
     }
 };
 

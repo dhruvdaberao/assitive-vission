@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { t } from '../translations';
 
 export const LANGUAGE_CONFIG = {
   'English': { code: 'en-IN', voice: 'meera', confirmText: 'I will now speak in English.' },
@@ -115,6 +116,13 @@ export function useSpeech() {
             });
           });
         }
+      } else if (response.status === 402 || response.status === 429 || response.status === 403) {
+        return new Promise<void>((resolve) => {
+          fallbackSpeak(t('tokens_finished', currentLang), langCode, () => {
+            resolve();
+            throw new Error("TOKENS_FINISHED");
+          });
+        });
       }
     } catch (e) {
       console.warn("Sarvam TTS failed, falling back to Browser API:", e);
@@ -227,6 +235,9 @@ export function useSpeech() {
       try {
         return await listen();
       } catch (e) {
+        if (e instanceof Error && e.message === "TOKENS_FINISHED") {
+          throw e; // Abort completely natively
+        }
         if (e === 'no-speech' || e === 'network' || e === 'not-allowed') {
           if (i < retries) continue;
         }
