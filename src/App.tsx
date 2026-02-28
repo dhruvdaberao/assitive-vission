@@ -12,6 +12,8 @@ import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shiel
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { QRCodeSVG } from 'qrcode.react';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -83,10 +85,11 @@ export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
 
-  const [currentLanguage, setCurrentLanguage] = useState(localStorage.getItem('appLanguage') || 'English');
-  const [status, setStatus] = useState(t('status_ready', currentLanguage));
+  const [currentLanguage, setCurrentLanguage] = useState('English');
+  const [status, setStatus] = useState(t('status_ready', 'English'));
   const [processing, setProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const isDarkMode = false; // Add toggle later if needed
 
   useEffect(() => {
@@ -96,13 +99,8 @@ export default function App() {
   }, [currentPage, currentLanguage]);
 
   // Feature specific states
-  const [destination, setDestination] = useState(() => localStorage.getItem('destination') || '');
-  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(() => {
-    try {
-      const saved = localStorage.getItem('destCoords');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [destination, setDestination] = useState('');
+  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [targetObject, setTargetObject] = useState('');
 
   // Emergency feature states
@@ -116,24 +114,55 @@ export default function App() {
   });
 
   // Notify feature states
-  const [notifyNumbers, setNotifyNumbers] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('notifyNumbers');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
   const [newNumber, setNewNumber] = useState('');
-  const [notifyName, setNotifyName] = useState(() => localStorage.getItem('notifyName') || '');
-  const [sandboxCode, setSandboxCode] = useState(() => localStorage.getItem('sandboxCode') || '');
+  const [notifyName, setNotifyName] = useState('');
+  const [sandboxCode, setSandboxCode] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapCenter, setMapCenter] = useState<[number, number]>(() => {
+  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
+  const [isLocationSaved, setIsLocationSaved] = useState(false);
+
+  // --- FIRESTORE HYDRATION & SYNC ---
+  const syncToFirebase = async (dataToSync: any) => {
     try {
-      const saved = localStorage.getItem('mapCenter');
-      return saved ? JSON.parse(saved) : [19.0760, 72.8777];
-    } catch { return [19.0760, 72.8777]; }
-  });
-  const [isLocationSaved, setIsLocationSaved] = useState(() => localStorage.getItem('isLocationSaved') === 'true');
+      const uid = localStorage.getItem('echo_user_id');
+      if (uid) {
+        await setDoc(doc(db, "users", uid), dataToSync, { merge: true });
+      }
+    } catch (e) {
+      console.error("Firebase sync error", e);
+    }
+  };
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        let uid = localStorage.getItem('echo_user_id');
+        if (!uid) {
+          uid = crypto.randomUUID();
+          localStorage.setItem('echo_user_id', uid);
+        }
+
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.settings?.language) setCurrentLanguage(data.settings.language);
+          if (data.settings?.notifyName) setNotifyName(data.settings.notifyName);
+          if (data.settings?.sandboxCode) setSandboxCode(data.settings.sandboxCode);
+          if (data.medicalInfo) setEmergencyData(data.medicalInfo);
+          if (data.guardianNumbers) setNotifyNumbers(data.guardianNumbers);
+        }
+      } catch (error) {
+        console.error("Failed to load user data from Firebase:", error);
+      } finally {
+        setIsAppLoading(false);
+      }
+    };
+    initializeApp();
+  }, []);
 
   const handleSearchLocation = async () => {
     if (!searchQuery.trim() || isLocationSaved) return;
@@ -155,19 +184,24 @@ export default function App() {
     }
   };
 
-  // Persist Notify Details
+  // Persist Notify & App Details to Firebase
   useEffect(() => {
-    localStorage.setItem('notifyNumbers', JSON.stringify(notifyNumbers));
-  }, [notifyNumbers]);
+    if (isAppLoading) return; // Wait until initial fetch finishes
 
-  useEffect(() => {
-    localStorage.setItem('notifyName', notifyName);
-  }, [notifyName]);
+    const dataToSync = {
+      medicalInfo: emergencyData,
+      guardianNumbers: notifyNumbers,
+      settings: {
+        language: currentLanguage,
+        notifyName: notifyName,
+        sandboxCode: sandboxCode
+      }
+    };
 
-  useEffect(() => {
-    localStorage.setItem('sandboxCode', sandboxCode);
-  }, [sandboxCode]);
+    syncToFirebase(dataToSync);
+  }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading]);
 
+  // Persist local-only map coordinates (non-sensitive)
   useEffect(() => {
     localStorage.setItem('destination', destination);
   }, [destination]);
@@ -492,6 +526,18 @@ export default function App() {
       speak(`Please click the browser lock icon to enable ${type} permission.`);
     }
   };
+
+  if (isAppLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${bgClass}`}>
+        <div className="flex flex-col items-center">
+          <img src="/eye-padded.png" alt="Loading" className="w-24 h-24 mb-4 drop-shadow-lg object-contain animate-pulse" />
+          <p className="text-xl font-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>Echo-Sight</p>
+          <div className="mt-4 w-6 h-6 border-4 border-current border-t-transparent rounded-full animate-spin opacity-50"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
