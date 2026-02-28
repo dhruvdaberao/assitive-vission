@@ -60,10 +60,28 @@ export default function App() {
   });
 
   // Notify feature states
-  const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
+  const [notifyNumbers, setNotifyNumbers] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('notifyNumbers');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [newNumber, setNewNumber] = useState('');
-  const [notifyName, setNotifyName] = useState('User');
-  const [sandboxCode, setSandboxCode] = useState('');
+  const [notifyName, setNotifyName] = useState(() => localStorage.getItem('notifyName') || '');
+  const [sandboxCode, setSandboxCode] = useState(() => localStorage.getItem('sandboxCode') || '');
+
+  // Persist Notify Details
+  useEffect(() => {
+    localStorage.setItem('notifyNumbers', JSON.stringify(notifyNumbers));
+  }, [notifyNumbers]);
+
+  useEffect(() => {
+    localStorage.setItem('notifyName', notifyName);
+  }, [notifyName]);
+
+  useEffect(() => {
+    localStorage.setItem('sandboxCode', sandboxCode);
+  }, [sandboxCode]);
 
   // Geofencing integration
   const { currentDistance, hasReached } = useGeofencing({
