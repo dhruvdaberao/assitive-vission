@@ -59,6 +59,60 @@ async function startServer() {
     }
   });
 
+  // TTS endpoint for Sarvam AI
+  app.post("/api/tts", async (req, res) => {
+    try {
+      const apiKey = process.env.SARVAM_API_KEY;
+      if (!apiKey) {
+        return res.status(401).json({ error: "SARVAM_API_KEY missing." });
+      }
+
+      const { text, targetLanguageCode } = req.body;
+
+      if (!text || !targetLanguageCode) {
+        return res.status(400).json({ error: "Text and targetLanguageCode are required." });
+      }
+
+      const sarvamPayload = {
+        inputs: [text],
+        target_language_code: targetLanguageCode,
+        speaker: "meera",
+        pitch: 0,
+        pace: 1.0,
+        loudness: 1.5,
+        speech_sample_rate: 24000,
+        enable_preprocessing: true,
+        model: "bulbul:v1"
+      };
+
+      const response = await fetch("https://api.sarvam.ai/text-to-speech", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-subscription-key": apiKey
+        },
+        body: JSON.stringify(sarvamPayload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Sarvam API Error:", errText);
+        return res.status(response.status).json({ error: "TTS service error." });
+      }
+
+      const data = await response.json();
+      // Sarvam returns { audios: ["base64string"] } usually for array inputs
+      if (data && data.audios && data.audios.length > 0) {
+         return res.json({ audioBase64: data.audios[0] });
+      } else {
+         return res.status(500).json({ error: "Invalid response from TTS service." });
+      }
+    } catch (error: unknown) {
+      console.error("TTS Proxy Error:", error);
+      res.status(500).json({ error: "TTS service temporarily unavailable." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

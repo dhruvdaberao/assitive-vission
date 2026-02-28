@@ -11,16 +11,17 @@ export const LANGUAGE_CONFIG = {
 
 export function parseSpokenNumber(text: string): number | null {
   const lower = text.toLowerCase().trim();
+  // Expanded dictionary handling basic phrases like "choose one", "option two", etc.
   if (lower.match(/\b(1|one|ek|एक|first)\b/)) return 1;
-  if (lower.match(/\b(2|two|do|दो|second)\b/)) return 2;
+  if (lower.match(/\b(2|two|do|दो|second|too|to)\b/)) return 2;
   if (lower.match(/\b(3|three|teen|तीन|third)\b/)) return 3;
-  if (lower.match(/\b(4|four|char|चार|fourth)\b/)) return 4;
+  if (lower.match(/\b(4|four|char|चार|fourth|for)\b/)) return 4;
   if (lower.match(/\b(5|five|panch|पांच|fifth)\b/)) return 5;
   if (lower.match(/\b(0|zero|shunya|शून्य|cancel)\b/)) return 0;
-  
+
   const match = lower.match(/\d/);
   if (match) return parseInt(match[0], 10);
-  
+
   return null;
 }
 
@@ -44,7 +45,7 @@ export function useSpeech() {
       recognitionRef.current.onresult = null;
       try {
         recognitionRef.current.abort();
-      } catch(e) {}
+      } catch (e) { }
       recognitionRef.current = null;
     }
     if (stateRef.current === 'LISTENING') {
@@ -52,8 +53,14 @@ export function useSpeech() {
     }
   }, [updateState]);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     if (stateRef.current === 'SPEAKING') {
       updateState('IDLE');
     }
@@ -63,25 +70,68 @@ export function useSpeech() {
     stopListening();
     updateState('SPEAKING');
     window.speechSynthesis.cancel();
-    
-    return new Promise((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      const currentLang = localStorage.getItem('appLanguage') || 'English';
-      utterance.lang = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
-      utterance.rate = 0.9;
-      
-      utterance.onend = () => {
-        if (stateRef.current === 'SPEAKING') updateState('IDLE');
-        resolve();
-      };
-      utterance.onerror = () => {
-        if (stateRef.current === 'SPEAKING') updateState('IDLE');
-        resolve();
-      };
-      
-      window.speechSynthesis.speak(utterance);
-    });
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    const currentLang = localStorage.getItem('appLanguage') || 'English';
+    const langCode = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
+
+    // Try Sarvam TTS first
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLanguageCode: langCode })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.audioBase64) {
+          return new Promise<void>((resolve) => {
+            const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
+            audioRef.current = audio;
+            audio.onended = () => {
+              if (stateRef.current === 'SPEAKING') updateState('IDLE');
+              resolve();
+            };
+            audio.onerror = () => {
+              console.error("Audio playback error, falling back to synthesis.");
+              // Fallback within error handler
+              fallbackSpeak(text, langCode, resolve);
+            };
+            audio.play().catch(e => {
+              console.error("Audio play failed, falling back:", e);
+              fallbackSpeak(text, langCode, resolve);
+            });
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Sarvam TTS failed, falling back to Browser API:", e);
+    }
+
+    // Fallback to the browser's speechSynthesis API if Sarvam fails or is unavailable
+    return new Promise<void>((resolve) => fallbackSpeak(text, langCode, resolve));
   }, [stopListening, updateState]);
+
+  const fallbackSpeak = useCallback((text: string, langCode: string, resolve: () => void) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langCode;
+    utterance.rate = 0.9;
+
+    utterance.onend = () => {
+      if (stateRef.current === 'SPEAKING') updateState('IDLE');
+      resolve();
+    };
+    utterance.onerror = () => {
+      if (stateRef.current === 'SPEAKING') updateState('IDLE');
+      resolve();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, [updateState]);
 
   const listen = useCallback((): Promise<string> => {
     return new Promise(async (resolve, reject) => {
@@ -110,7 +160,7 @@ export function useSpeech() {
       recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = false;
-      
+
       const currentLang = localStorage.getItem('appLanguage') || 'English';
       recognition.lang = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
 
@@ -128,11 +178,11 @@ export function useSpeech() {
           }
         }, 5000);
       };
-      
+
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         clearTimeout(timeoutId);
         if (stateRef.current !== 'LISTENING') return;
-        
+
         const result = event.results[0][0].transcript;
         setTranscript(result);
         updateState('PROCESSING');
@@ -185,16 +235,16 @@ export function useSpeech() {
     };
   }, [stopListening, stopSpeaking]);
 
-  return { 
-    speak, 
-    listen, 
-    speakAndListen, 
-    stopSpeaking, 
-    stopListening, 
-    isListening: voiceState === 'LISTENING', 
-    isSpeaking: voiceState === 'SPEAKING', 
+  return {
+    speak,
+    listen,
+    speakAndListen,
+    stopSpeaking,
+    stopListening,
+    isListening: voiceState === 'LISTENING',
+    isSpeaking: voiceState === 'SPEAKING',
     voiceState,
-    transcript 
+    transcript
   };
 }
 
