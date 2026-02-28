@@ -91,8 +91,16 @@ export default function App() {
         try {
           const ans = await speakAndListen(t('lang_prompt_1', currentLanguage));
           const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+          const ansWords = ansLower.split(/\s+/);
 
-          if (ansLower.includes('yes') || ansLower.includes('haan') || ansLower.includes('हाँ') || ansLower.includes('yeah') || ansLower.includes('yep') || ansLower.includes('हो') || ansLower.includes('ஆம்') || ansLower.includes('అవును') || ansLower.includes('হ্যাঁ')) {
+          // Comprehensive array of "yes" and affirmative words across English, Hindi, Marathi, Tamil, Telugu, and Bengali (including ASCII phonetics)
+          const positiveAnswers = [
+            'yes', 'yeah', 'yep', 'yup', 'ok', 'okay', 'sure', 'change',
+            'haan', 'ha', 'haa', 'हाँ', 'हां', 'ho', 'हो',
+            'aam', 'ஆம்', 'avunu', 'అవును', 'hyaan', 'হ্যাঁ', 'badalna', 'badlo'
+          ];
+
+          if (ansWords.some(w => positiveAnswers.includes(w))) {
             let validChoice = false;
             let retries = 0;
 
