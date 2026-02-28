@@ -90,9 +90,10 @@ export default function App() {
       return saved ? JSON.parse(saved) : [19.0760, 72.8777];
     } catch { return [19.0760, 72.8777]; }
   });
+  const [isLocationSaved, setIsLocationSaved] = useState(() => localStorage.getItem('isLocationSaved') === 'true');
 
   const handleSearchLocation = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || isLocationSaved) return;
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
@@ -102,7 +103,7 @@ export default function App() {
         setDestCoords({ lat, lng: lon });
         setMapCenter([lat, lon]);
         setDestination(data[0].display_name.split(',')[0]);
-        speak("Location found. Tracking active.");
+        speak("Location found. Please save to activate tracking.");
       } else {
         speak("Location not found.");
       }
@@ -136,6 +137,10 @@ export default function App() {
     localStorage.setItem('mapCenter', JSON.stringify(mapCenter));
   }, [mapCenter]);
 
+  useEffect(() => {
+    localStorage.setItem('isLocationSaved', isLocationSaved.toString());
+  }, [isLocationSaved]);
+
   // Geofencing integration
   const { currentDistance, hasReached } = useGeofencing({
     destinationLat: destCoords?.lat ?? 0,
@@ -143,7 +148,7 @@ export default function App() {
     destinationName: destination || 'Custom Location',
     userName: notifyName, // Use the new Notify Name for location updates
     notifyNumbers: notifyNumbers.length > 0 ? notifyNumbers : [emergencyData.contactPhone], // Fallback to emergency contact if empty
-    enabled: destCoords !== null
+    enabled: isLocationSaved && destCoords !== null
   });
 
   // Welcome message
@@ -503,7 +508,22 @@ export default function App() {
 
               {/* User Details Box */}
               <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><MapIcon size={20} /> Journey Details</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2"><MapIcon size={20} /> Journey Details</h3>
+                  <button
+                    onClick={() => {
+                      setIsLocationSaved(!isLocationSaved);
+                      if (!isLocationSaved) {
+                        speak("Tracking settings saved.");
+                      } else {
+                        speak("Edit tracking settings.");
+                      }
+                    }}
+                    className={`p-2 rounded-xl text-sm font-bold flex items-center gap-2 ${isLocationSaved ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'}`}
+                  >
+                    {isLocationSaved ? <><Edit2 size={16} /> Edit</> : <><Save size={16} /> Save</>}
+                  </button>
+                </div>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium opacity-70 mb-1">Traveler Name</label>
@@ -511,8 +531,9 @@ export default function App() {
                       type="text"
                       value={notifyName}
                       onChange={e => setNotifyName(e.target.value)}
+                      disabled={isLocationSaved}
                       placeholder="Enter your name"
-                      className={`w-full p-3 rounded-xl border ${inputClass}`}
+                      className={`w-full p-3 rounded-xl border ${inputClass} ${isLocationSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                   </div>
                   <div>
@@ -521,30 +542,34 @@ export default function App() {
                       type="text"
                       value={destination}
                       onChange={e => setDestination(e.target.value)}
+                      disabled={isLocationSaved}
                       placeholder="e.g. Work, Home, Station"
-                      className={`w-full p-3 rounded-xl border ${inputClass}`}
+                      className={`w-full p-3 rounded-xl border ${inputClass} ${isLocationSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSearchLocation()}
-                    placeholder="Search for a location..."
-                    className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
-                  />
-                  <button
-                    onClick={handleSearchLocation}
-                    className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
-                  >
-                    <Search size={20} />
-                  </button>
-                </div>
+                {!isLocationSaved && (
+                  <div className="mt-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSearchLocation()}
+                      placeholder="Search for a location..."
+                      className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
+                    />
+                    <button
+                      onClick={handleSearchLocation}
+                      className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+                    >
+                      <Search size={20} />
+                    </button>
+                  </div>
+                )}
 
-                <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0">
+                <div className="mt-4 rounded-xl overflow-hidden border border-gray-200 h-64 sticky w-full z-0 relative">
+                  {isLocationSaved && <div className="absolute inset-0 z-50 bg-black/5 cursor-not-allowed" />}
                   <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
                     <MapUpdater center={mapCenter} />
                     <TileLayer
@@ -553,16 +578,19 @@ export default function App() {
                     />
                     {destCoords && <Marker position={[destCoords.lat, destCoords.lng]} />}
                     <MapClickHandler onMapClick={(lat, lng) => {
+                      if (isLocationSaved) return;
                       setDestCoords({ lat, lng });
                       setDestination(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
-                      speak("Destination set. Tracking active.");
+                      speak("Destination selected. Please save to activate tracking.");
                     }} />
                   </MapContainer>
                 </div>
                 {destCoords && (
-                  <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                    <h4 className="font-bold text-emerald-800">Tracking Active 🟢</h4>
-                    <p className="text-emerald-600 text-sm">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
+                  <div className={`mt-4 p-3 rounded-xl border text-center transition-colors ${isLocationSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>
+                    <h4 className="font-bold flex items-center justify-center gap-2">
+                      {isLocationSaved ? <>Tracking Active 🟢</> : <>Tracking Paused ⏸️</>}
+                    </h4>
+                    <p className="text-sm mt-1">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
                   </div>
                 )}
               </div>
