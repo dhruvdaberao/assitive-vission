@@ -63,6 +63,7 @@ export default function App() {
   const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
   const [newNumber, setNewNumber] = useState('');
   const [notifyName, setNotifyName] = useState('User');
+  const [sandboxCode, setSandboxCode] = useState('');
 
   // Geofencing integration
   const { currentDistance, hasReached } = useGeofencing({
@@ -520,12 +521,19 @@ export default function App() {
               <div className={`p-6 rounded-2xl shadow-sm border flex flex-col items-center text-center ${cardClass}`}>
                 <div className="bg-white p-4 rounded-xl shadow-inner mb-4">
                   <QRCodeSVG
-                    value={JSON.stringify({ app: "EchoSight", type: "notify", userName: notifyName, timestamp: Date.now() })}
+                    value={sandboxCode ? `https://wa.me/14155238886?text=${encodeURIComponent(sandboxCode)}` : `https://wa.me/14155238886`}
                     size={150}
                   />
                 </div>
                 <h3 className="font-bold text-lg flex items-center gap-2 justify-center"><QrCode size={20} /> Family Pairing</h3>
-                <p className="text-sm opacity-70 mt-2">Guardians can scan this QR code to confirm tracking authorization securely.</p>
+                <p className="text-sm opacity-70 mt-2 mb-4">Guardians can scan this QR code to connect to the Twilio Sandbox.</p>
+                <input
+                  type="text"
+                  value={sandboxCode}
+                  onChange={e => setSandboxCode(e.target.value)}
+                  placeholder="Enter Sandbox Join Code (e.g. 'join fruit-orange')"
+                  className={`w-full max-w-sm p-3 rounded-xl border text-sm text-center ${inputClass}`}
+                />
               </div>
 
             </div>
