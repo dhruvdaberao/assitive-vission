@@ -16,13 +16,13 @@ const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 
 export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
-  
+
   const [status, setStatus] = useState('Ready');
   const [processing, setProcessing] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(localStorage.getItem('appLanguage') || 'English');
   const [currentPage, setCurrentPage] = useState('home');
   const isDarkMode = false; // Add toggle later if needed
-  
+
   // Feature specific states
   const [destination, setDestination] = useState('');
   const [targetObject, setTargetObject] = useState('');
@@ -83,38 +83,54 @@ export default function App() {
       } else if (currentPage === 'language') {
         try {
           const ans = await speakAndListen("Do you want to change language? Say yes or no.");
-          if (ans.toLowerCase().includes('yes') || ans.toLowerCase().includes('haan') || ans.toLowerCase().includes('हाँ')) {
+          const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+
+          if (ansLower.includes('yes') || ansLower.includes('haan') || ansLower.includes('हाँ') || ansLower.includes('yeah') || ansLower.includes('yep')) {
             let validChoice = false;
             let retries = 0;
+
             while (isActive && !validChoice && retries < 3) {
               try {
-                const numStr = await speakAndListen("Say 1 for Hindi. Say 2 for Marathi. Say 3 for Tamil. Say 4 for Telugu. Say 5 for Bengali. Say 0 to cancel.");
+                const numStr = await speakAndListen("Say 1 for Hindi. Say 2 for Marathi. Say 3 for English. Say 4 for Tamil. Say 5 for Telugu. Say 0 to cancel.");
+                console.log("Language spoken input:", numStr);
                 const num = parseSpokenNumber(numStr);
-                
+
                 let newLang = '';
                 if (num === 1) newLang = 'Hindi';
                 else if (num === 2) newLang = 'Marathi';
-                else if (num === 3) newLang = 'Tamil';
-                else if (num === 4) newLang = 'Telugu';
-                else if (num === 5) newLang = 'Bengali';
+                else if (num === 3) newLang = 'English';
+                else if (num === 4) newLang = 'Tamil';
+                else if (num === 5) newLang = 'Telugu';
                 else if (num === 0) {
-                  await speak("Cancelled.");
                   validChoice = true;
+                  await speak("Cancelled.");
                   break;
                 }
-                
+
                 if (newLang) {
+                  console.log("Language changed to:", newLang);
                   setCurrentLanguage(newLang);
                   localStorage.setItem('appLanguage', newLang);
+
+                  // Forcefully stop listening to prevent re-trigger loop
+                  stopListening();
+
+                  // Wait for the new target language mapping exactly, and manually set it for the final speech output
                   const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
+
+                  // Add a small delay for state propagation, then immediately speak the confirmation
+                  await new Promise(r => setTimeout(r, 500));
                   await speak(confirmText);
+
                   validChoice = true;
                 } else {
                   retries++;
-                  if (retries < 3) await speak("Invalid choice. Please say a number between 0 and 5.");
+                  if (retries < 3) await speak("Invalid selection. Please say a number between 1 and 5.");
                 }
               } catch (e) {
                 retries++;
+                // Add a slightly longer timeout before retry to ensure the previous logic settles
+                await new Promise(r => setTimeout(r, 500));
                 if (isActive && retries < 3) await speak("Please repeat.");
               }
             }
@@ -225,10 +241,10 @@ export default function App() {
       </div>
       <div className="w-2/4 flex items-center justify-center gap-2 text-center">
         {!showBack && (
-          <img 
-            src="/icon.svg" 
-            alt="App Logo" 
-            className="max-h-[36px] w-auto object-contain p-1" 
+          <img
+            src="/icon.svg"
+            alt="App Logo"
+            className="max-h-[36px] w-auto object-contain p-1"
           />
         )}
         <h1 className="text-lg font-bold tracking-tight whitespace-nowrap">{title}</h1>
@@ -247,8 +263,8 @@ export default function App() {
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
-            {renderHeader('Assistive Vision', false)}
-            
+            {renderHeader('EchoSight', false)}
+
             <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
               <p className={`text-2xl font-medium leading-relaxed max-w-2xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 {status}
@@ -274,10 +290,10 @@ export default function App() {
           <motion.div key="navigate" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader('Navigation')}
             <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
-               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
-                 {status}
-               </div>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
+                {status}
+              </div>
             </div>
           </motion.div>
         )}
@@ -286,12 +302,12 @@ export default function App() {
           <motion.div key="find" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader('Find Object')}
             <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
-               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
-                 {targetObject ? `Finding: ${targetObject}` : "Listening..."}
-                 <br/>
-                 <span className="text-lg font-normal">{status}</span>
-               </div>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
+                {targetObject ? `Finding: ${targetObject}` : "Listening..."}
+                <br />
+                <span className="text-lg font-normal">{status}</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -300,17 +316,17 @@ export default function App() {
           <motion.div key="camera-feature" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(currentPage === 'describe' ? 'Describe Scene' : 'Identify Currency')}
             <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
             </div>
             <div className={`p-6 border-t min-h-[200px] flex flex-col items-center justify-center gap-6 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
               <p className={`text-xl font-medium text-center leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{status}</p>
-              <AccessibleButton 
-                icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />} 
-                label="Analyze Again" 
-                onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()} 
-                speak={speak} 
-                disabled={processing} 
-                color={isDarkMode ? "bg-white text-gray-900" : "bg-gray-900 text-white"} 
+              <AccessibleButton
+                icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />}
+                label="Analyze Again"
+                onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()}
+                speak={speak}
+                disabled={processing}
+                color={isDarkMode ? "bg-white text-gray-900" : "bg-gray-900 text-white"}
               />
             </div>
           </motion.div>
@@ -342,7 +358,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm font-medium opacity-70 mb-1">Full Name</label>
                   {isEditingEmergency ? (
-                    <input type="text" value={emergencyData.name} onChange={e => setEmergencyData({...emergencyData, name: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                    <input type="text" value={emergencyData.name} onChange={e => setEmergencyData({ ...emergencyData, name: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                   ) : (
                     <p className="text-xl font-semibold">{emergencyData.name}</p>
                   )}
@@ -351,7 +367,7 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium opacity-70 mb-1">Age</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({...emergencyData, age: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({ ...emergencyData, age: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.age}</p>
                     )}
@@ -359,19 +375,19 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium opacity-70 mb-1">Blood Type</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({...emergencyData, bloodType: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({ ...emergencyData, bloodType: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold text-red-500">{emergencyData.bloodType}</p>
                     )}
                   </div>
                 </div>
-                
+
                 <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <h2 className="text-2xl font-bold mb-4">Emergency Contact</h2>
                   <div className="mb-4">
                     <label className="block text-sm font-medium opacity-70 mb-1">Contact Name</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.contactName} onChange={e => setEmergencyData({...emergencyData, contactName: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.contactName} onChange={e => setEmergencyData({ ...emergencyData, contactName: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactName}</p>
                     )}
@@ -379,15 +395,15 @@ export default function App() {
                   <div className="mb-6">
                     <label className="block text-sm font-medium opacity-70 mb-1">Phone Number</label>
                     {isEditingEmergency ? (
-                      <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({...emergencyData, contactPhone: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({ ...emergencyData, contactPhone: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactPhone}</p>
                     )}
                   </div>
 
                   {!isEditingEmergency && (
-                    <a 
-                      href={`tel:${emergencyData.contactPhone}`} 
+                    <a
+                      href={`tel:${emergencyData.contactPhone}`}
                       className="flex items-center justify-center p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
                     >
                       <PhoneCall className="mr-3" size={28} />

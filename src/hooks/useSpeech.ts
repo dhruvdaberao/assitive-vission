@@ -10,15 +10,18 @@ export const LANGUAGE_CONFIG = {
 };
 
 export function parseSpokenNumber(text: string): number | null {
-  const lower = text.toLowerCase().trim();
-  // Expanded dictionary handling basic phrases like "choose one", "option two", etc.
-  if (lower.match(/\b(1|one|ek|एक|first)\b/)) return 1;
+  // Normalize transcript: lowercased, spaces trimmed, punctuation removed
+  const lower = text.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+
+  // Expanded dictionary handling edge cases, spelling mistakes, and generic phrases
+  if (lower.match(/\b(1|one|ek|एक|first|won|wan)\b/)) return 1;
   if (lower.match(/\b(2|two|do|दो|second|too|to)\b/)) return 2;
-  if (lower.match(/\b(3|three|teen|तीन|third)\b/)) return 3;
+  if (lower.match(/\b(3|three|teen|तीन|third|tree)\b/)) return 3;
   if (lower.match(/\b(4|four|char|चार|fourth|for)\b/)) return 4;
   if (lower.match(/\b(5|five|panch|पांच|fifth)\b/)) return 5;
-  if (lower.match(/\b(0|zero|shunya|शून्य|cancel)\b/)) return 0;
+  if (lower.match(/\b(0|zero|shunya|शून्य|cancel|stop)\b/)) return 0;
 
+  // Final fallback to extract raw digits from string 
   const match = lower.match(/\d/);
   if (match) return parseInt(match[0], 10);
 
