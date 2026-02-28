@@ -106,11 +106,11 @@ export default function App() {
   // Emergency feature states
   const [isEditingEmergency, setIsEditingEmergency] = useState(false);
   const [emergencyData, setEmergencyData] = useState({
-    name: 'John Doe',
-    age: '35',
-    bloodType: 'O+',
-    contactName: 'Jane Doe',
-    contactPhone: '+919876543210' // Must be E.164 format for WhatsApp
+    name: '',
+    age: '',
+    bloodType: '',
+    contactName: '',
+    contactPhone: ''
   });
 
   // Notify feature states
@@ -123,18 +123,7 @@ export default function App() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [isLocationSaved, setIsLocationSaved] = useState(false);
 
-  // --- FIRESTORE HYDRATION & SYNC ---
-  const syncToFirebase = async (dataToSync: any) => {
-    try {
-      const uid = localStorage.getItem('echo_user_id');
-      if (uid) {
-        await setDoc(doc(db, "users", uid), dataToSync, { merge: true });
-      }
-    } catch (e) {
-      console.error("Firebase sync error", e);
-    }
-  };
-
+  // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -154,6 +143,17 @@ export default function App() {
           if (data.settings?.sandboxCode) setSandboxCode(data.settings.sandboxCode);
           if (data.medicalInfo) setEmergencyData(data.medicalInfo);
           if (data.guardianNumbers) setNotifyNumbers(data.guardianNumbers);
+        } else {
+          // Document does not exist, initialize it with safe defaults
+          await setDoc(docRef, {
+            guardianNumbers: [],
+            medicalInfo: { name: '', age: '', bloodType: '', contactName: '', contactPhone: '' },
+            settings: {
+              language: 'English',
+              notifyName: '',
+              sandboxCode: ''
+            }
+          });
         }
       } catch (error) {
         console.error("Failed to load user data from Firebase:", error);
@@ -184,21 +184,31 @@ export default function App() {
     }
   };
 
-  // Persist Notify & App Details to Firebase
+  // Persist Notify & App Details to Firebase (Debounced)
   useEffect(() => {
-    if (isAppLoading) return; // Wait until initial fetch finishes
+    if (!isAppLoading) {
+      const timeout = setTimeout(async () => {
+        try {
+          const uid = localStorage.getItem('echo_user_id');
+          if (uid) {
+            const userRef = doc(db, "users", uid);
+            await setDoc(userRef, {
+              guardianNumbers: notifyNumbers,
+              medicalInfo: emergencyData,
+              settings: {
+                language: currentLanguage,
+                notifyName: notifyName,
+                sandboxCode: sandboxCode
+              }
+            }, { merge: true });
+          }
+        } catch (e) {
+          console.error("Firebase sync error", e);
+        }
+      }, 1000);
 
-    const dataToSync = {
-      medicalInfo: emergencyData,
-      guardianNumbers: notifyNumbers,
-      settings: {
-        language: currentLanguage,
-        notifyName: notifyName,
-        sandboxCode: sandboxCode
-      }
-    };
-
-    syncToFirebase(dataToSync);
+      return () => clearTimeout(timeout);
+    }
   }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading]);
 
   // Persist local-only map coordinates (non-sensitive)
