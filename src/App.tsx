@@ -38,7 +38,16 @@ const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 
 
 const BannerCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const images = ['/images/banner/banner1.png', '/images/banner/banner2.png', '/images/banner/banner3.png'];
+  const images = [
+    '/images/banner/banner1.png',
+    '/images/banner/banner2.png',
+    '/images/banner/banner3.png',
+    '/images/banner/banner4.png',
+    '/images/banner/banner5.png',
+    '/images/banner/banner6.png',
+    '/images/banner/banner7.png',
+    '/images/banner/banner8.png'
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
