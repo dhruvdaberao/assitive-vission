@@ -8,9 +8,22 @@ import { useCamera } from './hooks/useCamera';
 import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } from './hooks/useSpeech';
 // In a production app, this would call our custom backend, not Gemini directly.
 import { analyzeScene } from './services/gemini';
-import { Search, Eye, Map, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2 } from 'lucide-react';
+import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet icons in React
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
 import { t } from './translations';
+import { useGeofencing } from './hooks/useGeofencing';
 
 const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
 
@@ -32,6 +45,7 @@ export default function App() {
 
   // Feature specific states
   const [destination, setDestination] = useState('');
+  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [targetObject, setTargetObject] = useState('');
 
   // Emergency feature states
@@ -41,7 +55,17 @@ export default function App() {
     age: '35',
     bloodType: 'O+',
     contactName: 'Jane Doe',
-    contactPhone: '911'
+    contactPhone: '+919876543210' // Must be E.164 format for WhatsApp
+  });
+
+  // Geofencing integration
+  const { currentDistance, hasReached } = useGeofencing({
+    destinationLat: destCoords?.lat ?? 0,
+    destinationLng: destCoords?.lng ?? 0,
+    destinationName: destination || 'Custom Location',
+    userName: emergencyData.name,
+    receiverNumber: emergencyData.contactPhone,
+    enabled: currentPage === 'navigate' && destCoords !== null
   });
 
   // Welcome message
@@ -58,20 +82,8 @@ export default function App() {
 
     const runPageLogic = async () => {
       if (currentPage === 'navigate') {
-        setDestination('');
-        try {
-          const dest = await speakAndListen(t('nav_prompt', currentLanguage), 2);
-          if (isActive && dest) {
-            setDestination(dest);
-            await speak(dest + ". " + t('nav_confirm', currentLanguage));
-            setStatus(`Navigating to ${dest}`);
-          }
-        } catch (e) {
-          if (isActive) {
-            await speak(t('nav_fail', currentLanguage));
-            setCurrentPage('home');
-          }
-        }
+        // Wait for manual map tap instead of purely voice
+        await speak("Please tap the map to set a destination for WhatsApp Geofencing.");
       } else if (currentPage === 'find') {
         setTargetObject('');
         try {
@@ -253,7 +265,7 @@ export default function App() {
     <header className={`fixed top-0 w-full z-[1000] h-16 px-4 border-b flex justify-between items-center shadow-sm ${headerClass}`}>
       <div className="w-1/4 flex justify-start">
         {showBack && (
-          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); }} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
+          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); setDestCoords(null); }} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
             <ArrowLeft className={isDarkMode ? "text-white" : "text-gray-900"} />
           </button>
         )}
@@ -299,7 +311,7 @@ export default function App() {
 
             <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
               <div className="grid grid-cols-2 gap-4 w-full h-full content-start max-w-md mx-auto">
-                <AccessibleButton icon={<Map size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<MapIcon size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Search size={36} />} label={t('btn_find', currentLanguage)} onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
@@ -315,12 +327,32 @@ export default function App() {
 
         {currentPage === 'navigate' && (
           <motion.div key="navigate" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Navigation')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
-              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
-                {status}
+            {renderHeader('Live Navigation')}
+            <div className="flex-1 bg-gray-100 relative overflow-hidden flex flex-col">
+              <div className="flex-1 z-0 w-full relative">
+                <MapContainer center={[19.0760, 72.8777]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  {destCoords && <Marker position={[destCoords.lat, destCoords.lng]} />}
+                  <MapClickHandler onMapClick={(lat, lng) => {
+                    setDestCoords({ lat, lng });
+                    setDestination(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+                    speak("Destination set. Tracking active.");
+                  }} />
+                </MapContainer>
               </div>
+
+              {destCoords && (
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-11/12 max-w-md bg-white rounded-2xl shadow-xl p-4 z-[1000] border-2 border-emerald-500 text-center">
+                  <h3 className="font-bold text-lg mb-1">Tracking Active 🟢</h3>
+                  <p className="text-gray-600 text-sm mb-2">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
+                  <p className="text-emerald-600 font-semibold text-sm">
+                    {hasReached ? "You have arrived!" : "On your way..."}
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -505,6 +537,15 @@ function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "b
       <span className="text-lg font-semibold tracking-tight pointer-events-none">{label}</span>
     </motion.button>
   );
+}
+
+function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    }
+  });
+  return null;
 }
 
 function VideoPreview({ stream, className }: { stream: MediaStream | null, className?: string }) {

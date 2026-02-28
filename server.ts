@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import twilio from "twilio";
 
 async function startServer() {
   const app = express();
@@ -49,12 +50,12 @@ async function startServer() {
       res.json({ text: response.text || "I couldn't analyze the scene." });
     } catch (error: unknown) {
       console.error("Gemini API Error:", error);
-      
+
       const err = error as any;
       if (err.status === 429 || err.message?.includes('429')) {
         return res.status(429).json({ error: "Vision service rate limit exceeded." });
       }
-      
+
       res.status(500).json({ error: "Vision service temporarily unavailable." });
     }
   });
@@ -103,13 +104,57 @@ async function startServer() {
       const data = await response.json();
       // Sarvam returns { audios: ["base64string"] } usually for array inputs
       if (data && data.audios && data.audios.length > 0) {
-         return res.json({ audioBase64: data.audios[0] });
+        return res.json({ audioBase64: data.audios[0] });
       } else {
-         return res.status(500).json({ error: "Invalid response from TTS service." });
+        return res.status(500).json({ error: "Invalid response from TTS service." });
       }
     } catch (error: unknown) {
       console.error("TTS Proxy Error:", error);
       res.status(500).json({ error: "TTS service temporarily unavailable." });
+    }
+  });
+
+  // WhatsApp Twilio Notifications
+  app.post("/api/send-whatsapp", async (req, res) => {
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const auth = process.env.TWILIO_AUTH_TOKEN;
+    const sender = process.env.TWILIO_WHATSAPP_NUMBER;
+
+    if (!sid || !auth || !sender) {
+      return res.status(500).json({ error: "Twilio credentials missing on server." });
+    }
+
+    try {
+      const client = twilio(sid, auth);
+      const { type, userName, destinationName, receiverNumber, currentLat, currentLng } = req.body;
+
+      if (!receiverNumber) {
+        return res.status(400).json({ error: "Receiver number required" });
+      }
+
+      let message = "";
+      if (type === "reached") {
+        message = `🟢 ${userName || "User"} has reached ${destinationName}.`;
+      } else {
+        message = `🟡 ${userName || "User"} is out of ${destinationName} and is on the way.`;
+      }
+
+      // Live Location Link
+      if (currentLat && currentLng) {
+        const mapsLink = `https://www.openstreetmap.org/?mlat=${currentLat}&mlon=${currentLng}`;
+        message += `\n📍 Live Location: ${mapsLink}`;
+      }
+
+      await client.messages.create({
+        body: message,
+        from: `whatsapp:${sender}`,
+        to: `whatsapp:${receiverNumber}`
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Twilio WhatsApp Error:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
