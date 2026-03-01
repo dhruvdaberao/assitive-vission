@@ -403,6 +403,11 @@ export default function App() {
           await speak(response);
         }
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        const errorMsg = t('camera_not_ready', currentLanguage) || "Camera is warming up, please try again.";
+        setStatus(errorMsg);
+        await speak(errorMsg);
+        setTimeout(() => setCurrentPage('home'), 1500);
       }
     } catch (e: any) {
       if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
@@ -440,6 +445,11 @@ export default function App() {
           await speak(response);
         }
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        const errorMsg = t('camera_not_ready', currentLanguage) || "Camera is warming up, please try again.";
+        setStatus(errorMsg);
+        await speak(errorMsg);
+        setTimeout(() => setCurrentPage('home'), 1500);
       }
     } catch (e: any) {
       if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
@@ -477,6 +487,11 @@ export default function App() {
           await speak(response);
         }
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        const errorMsg = t('camera_not_ready', currentLanguage) || "Camera is warming up, please try again.";
+        setStatus(errorMsg);
+        await speak(errorMsg);
+        setTimeout(() => setCurrentPage('home'), 1500);
       }
     } catch (e: any) {
       if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
