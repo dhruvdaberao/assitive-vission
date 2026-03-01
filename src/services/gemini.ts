@@ -44,7 +44,7 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
           await new Promise(r => setTimeout(r, delay));
           continue;
         } else {
-          return "SYSTEM_BUSY"; // Send unified failure signal to UI
+          return "TOKENS_FINISHED"; // Unified failure signal across TTS and Vision APIs
         }
       }
 

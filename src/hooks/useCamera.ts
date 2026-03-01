@@ -37,17 +37,15 @@ export function useCamera() {
 
     function attachStream(mediaStream: MediaStream) {
       setStream(mediaStream);
+      setIsReady(true);
+      setError(null);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         videoRef.current.onloadedmetadata = async () => {
           try {
             await videoRef.current?.play();
-            setIsReady(true);
-            setError(null);
           } catch (playbackErr) {
             console.error('Failed to auto-play video:', playbackErr);
-            // Sometimes autoplay is blocked until user interacts, but we can still be ready
-            setIsReady(true);
           }
         };
       }
@@ -65,6 +63,12 @@ export function useCamera() {
 
   const captureImage = useCallback((): string | null => {
     if (!videoRef.current || !isReady) return null;
+
+    // Prevent unhandled errors if stream refuses to physically render frames on Safari
+    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+      console.warn("captureImage: video stream exists but has 0x0 structural dimension");
+      return null;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;

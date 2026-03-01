@@ -379,7 +379,10 @@ export default function App() {
   };
 
   const handleDescribeScene = async () => {
-    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!cameraReady) {
+      speak(cameraError ? cameraError : t('camera_unavail', currentLanguage));
+      return;
+    }
     if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(t('status_analyzing', currentLanguage));
@@ -401,15 +404,22 @@ export default function App() {
         }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
-    } catch (e) {
-      speak(t('service_unavail', currentLanguage));
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        speak(t('tokens_finished', currentLanguage));
+      } else {
+        speak(t('service_unavail', currentLanguage));
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleIdentifyCurrency = async () => {
-    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!cameraReady) {
+      speak(cameraError ? cameraError : t('camera_unavail', currentLanguage));
+      return;
+    }
     if (!checkThrottle()) return;
     setProcessing(true);
     setStatus("Identifying currency...");
@@ -431,15 +441,22 @@ export default function App() {
         }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
-    } catch (e) {
-      speak(t('service_unavail', currentLanguage));
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        speak(t('tokens_finished', currentLanguage));
+      } else {
+        speak(t('service_unavail', currentLanguage));
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleFindObject = async (objName: string) => {
-    if (!cameraReady) { speak(t('camera_unavail', currentLanguage)); return; }
+    if (!cameraReady) {
+      speak(cameraError ? cameraError : t('camera_unavail', currentLanguage));
+      return;
+    }
     if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(`Looking for ${objName}...`);
@@ -461,8 +478,12 @@ export default function App() {
         }
         setTimeout(() => setCurrentPage('home'), 1000);
       }
-    } catch (e) {
-      speak(t('service_unavail', currentLanguage));
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        speak(t('tokens_finished', currentLanguage));
+      } else {
+        speak(t('service_unavail', currentLanguage));
+      }
     } finally {
       setProcessing(false);
     }
