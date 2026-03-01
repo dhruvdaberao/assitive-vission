@@ -36,7 +36,7 @@ L.Icon.Default.mergeOptions({
 import { t } from './translations';
 import { useGeofencing } from './hooks/useGeofencing';
 
-const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Assamese', 'Manipuri', 'Bodo', 'Urdu'];
 
 const BannerCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);

@@ -30,6 +30,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ബട്ടണിന്റെ പേര് കേൾക്കാൻ ഒരിക്കൽ ടാപ്പുചെയ്യുക. ഫീച്ചർ തുറക്കാൻ രണ്ടുതവണ ടാപ്പുചെയ്യുക.",
         Punjabi: "ਬਟਨ ਦਾ ਨਾਮ ਸੁਣਨ ਲਈ ਇੱਕ ਵਾਰ ਟੈਪ ਕਰੋ। ਵਿਸ਼ੇਸ਼ਤਾ ਖੋਲ੍ਹਣ ਲਈ ਦੋ ਵਾਰ ਟੈਪ ਕਰੋ।",
         Odia: "ବଟନ୍ ନାମ ଶୁଣିବାକୁ ଥରେ ନକଲ କରନ୍ତୁ | ବୈଶିଷ୍ଟ୍ୟ ଖୋଲିବାକୁ ଦୁଇଥର ନକଲ କରନ୍ତୁ |",
+        Assamese: "বুটামৰ নাম শুনিবলৈ এবাৰ টিপক। বৈশিষ্ট্য খুলিবলৈ দুবাৰ টিপক।",
+        Manipuri: "বত্নগী মমিং তারিবা অদু তেনবা অমুক্তা নম্বীয়ু। ফীচর হাংদোক্নবা অনিরক নম্বীয়ু।",
+        Bodo: "बुतामनि मुंखौ खोनासंनो खेबसे थु। आखुथायखौ खेवनो खेबनै थु।",
         Urdu: "بٹن کا نام سننے کے لیے ایک بار ٹیپ کریں۔ فیچر کھولنے کے لیے دو بار ٹیپ کریں۔"
     },
     nav_prompt: {
@@ -44,6 +47,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "നിങ്ങൾക്ക് എവിടെ പോകണം?",
         Punjabi: "ਤੁਸੀਂ ਕਿੱਥੇ ਜਾਣਾ ਚਾਹੁੰਦੇ ਹੋ?",
         Odia: "ତୁମେ କେଉଁଠିକୁ ଯିବାକୁ ଚାହୁଁଛ?",
+        Assamese: "আপুনি ক'লৈ যাব বিচাৰে?",
+        Manipuri: "নহাক কদাইদা চৎনিংলি?",
+        Bodo: "नोंथाङा बबेयाव थांनो लुबैदों?",
         Urdu: "آپ کہاں جانا چاہتے ہیں؟"
     },
     nav_confirm: {
@@ -58,6 +64,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ലക്ഷ്യസ്ഥാനത്തേക്ക് നാവിഗേറ്റ് ചെയ്യുന്നു. വഴി വ്യക്തമാണ്. മുന്നോട്ട് നടക്കൂ.",
         Punjabi: "ਮੰਜ਼ਿਲ 'ਤੇ ਨੈਵੀਗੇਟ ਕਰ ਰਿਹਾ ਹੈ। ਰਸਤਾ ਸਾਫ਼ ਹੈ। ਅੱਗੇ ਚੱਲੋ।",
         Odia: "ଗନ୍ତବ୍ୟ ସ୍ଥଳକୁ ନେଭିଗେଟ୍ କରୁଛି | ରାସ୍ତା ସଫା ଅଛି | ଆଗକୁ ଚାଲ |",
+        Assamese: "গন্তব্যস্থানলৈ নেভিগেট কৰা হৈছে। পথ পৰিষ্কাৰ। আগলৈ খোজ কাঢ়ক।",
+        Manipuri: "চৎনিংবা মফম অদুদা নেভিগেত তৌরি। লম্বী শেংলে। মাংলোমদা চংশিনবিয়ু।",
+        Bodo: "थांखियाव नेभिगेट खालामगासिनो दं। लामाया गोगो। सिगांथिं थाबाय।",
         Urdu: "منزل کی طرف نیویگیٹ کر رہا ہے۔ راستہ صاف ہے۔ آگے بڑھیں۔"
     },
     nav_fail: {
@@ -72,6 +81,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ലക്ഷ്യസ്ഥാനം കണ്ടെത്തിയില്ല. ഹോമിലേക്ക് മടങ്ങുന്നു.",
         Punjabi: "ਕੋਈ ਮੰਜ਼ਿਲ ਨਹੀਂ ਮਿਲੀ। ਹੋਮ 'ਤੇ ਵਾਪਸ ਜਾ ਰਿਹਾ ਹੈ।",
         Odia: "କୌଣସି ଗନ୍ତବ୍ୟସ୍ଥଳ ମିଳିଲା ନାହିଁ | ହୋମକୁ ଫେରୁଛି |",
+        Assamese: "কোনো গন্তব্যস্থান পোৱা নগ'ল। হোমলৈ ঘূৰি যোৱা হৈছে।",
+        Manipuri: "চৎনবা মফম অমত্তা খঙদ্রে। হোমদা হল্লক্লি।",
+        Bodo: "जेबो थांखि मोनाखै। ह'म-आव गिदिंबोगासिनो।",
         Urdu: "کوئی منزل نہیں ملی۔ ہوم پر واپس جا رہا ہے۔"
     },
     find_prompt: {
@@ -86,6 +98,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "നിങ്ങൾ എന്താണ് തിരയുന്നത്?",
         Punjabi: "ਤੁਸੀਂ ਕੀ ਲੱਭ ਰਹੇ ਹੋ?",
         Odia: "ଆପଣ କ’ଣ ଖୋଜୁଛନ୍ତି?",
+        Assamese: "আপুনি কি বিচাৰি আছে?",
+        Manipuri: "নহাক্না করি থীরিবগে?",
+        Bodo: "नोंथाङा मा नागिरगासिनो दं?",
         Urdu: "آپ کیا ڈھونڈ رہے ہیں؟"
     },
     find_confirm: {
@@ -100,6 +115,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "വസ്തുവിനായി പ്രദേശം സ്കാൻ ചെയ്യുന്നു.",
         Punjabi: "ਵਸਤੂ ਲਈ ਖੇਤਰ ਸਕੈਨ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ।",
         Odia: "ବସ୍ତୁ ପାଇଁ ଆଖପାଖ ସ୍କାନ୍ କରୁଛି |",
+        Assamese: "বস্তুৰ বাবে এৰিয়া স্কেন কৰা হৈছে।",
+        Manipuri: "পোৎলম অদুগী এরিয়া স্ক্যান তৌরি।",
+        Bodo: "मुवानि थाखाय ओनसोलखौ स्कान खालामगासिनो।",
         Urdu: "چیز کے لیے علاقہ سکین کر رہا ہے۔"
     },
     find_fail: {
@@ -114,6 +132,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ഒരു വസ്തുവും കണ്ടെത്തിയില്ല. ഹോമിലേക്ക് മടങ്ങുന്നു.",
         Punjabi: "ਕੋਈ ਵਸਤੂ ਨਹੀਂ ਮਿਲੀ। ਹੋਮ 'ਤੇ ਵਾਪਸ ਜਾ ਰਿਹਾ ਹੈ।",
         Odia: "କୌଣସି ବସ୍ତୁ ଚିହ୍ନଟ ହୋଇନାହିଁ | ହୋମକୁ ଫେରୁଛି |",
+        Assamese: "কোনো বস্তু ধৰা পৰা নাই। হোমলৈ ঘূৰি যোৱা হৈছে।",
+        Manipuri: "পোৎলম অমত্তা খঙদ্রে। হোমদা হল্লক্লি।",
+        Bodo: "जेबो मुवा मोनाखै। ह'म-आव गिदिंबोगासिनो।",
         Urdu: "کوئی چیز نہیں ملی۔ ہوم پر واپس جا رہا ہے۔"
     },
     lang_prompt_visual: {
@@ -128,6 +149,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "സ്ക്രീനിൽ നിന്ന് ഒരു ഭാഷ തിരഞ്ഞെടുക്കുക, അല്ലെങ്കിൽ ഭാഷയുടെ പേര് പറയുക.",
         Punjabi: "ਸਕ੍ਰੀਨ ਤੋਂ ਕੋਈ ਭਾਸ਼ਾ ਚੁਣੋ, ਜਾਂ ਭਾਸ਼ਾ ਦਾ ਨਾਮ ਬੋਲੋ।",
         Odia: "ସ୍କ୍ରିନରୁ ଏକ ଭାଷା ଚୟନ କରନ୍ତୁ, କିମ୍ବା ଭାଷାର ନାମ କୁହନ୍ତୁ |",
+        Assamese: "স্ক্ৰীণৰ পৰা এটা ভাষা নিৰ্বাচন কৰক, বা ভাষাৰ নাম কওক।",
+        Manipuri: "স্ক্রীনদগী লোন অম খল্লু, নত্ত্রগা লোন অদুগী মমিং হায়য়ু।",
+        Bodo: "स्क्रिननिफ्राय मोनसे राव सायख, एबा रावनि मुंखौ बुं।",
         Urdu: "سکرین سے ایک زبان منتخب کریں، یا زبان کا نام بولیں۔"
     },
     lang_cancelled: {
@@ -142,6 +166,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "റദ്ദാക്കി.",
         Punjabi: "ਰੱਦ ਕੀਤਾ ਗਿਆ।",
         Odia: "ବାତିଲ୍ କରାଯାଇଛି |",
+        Assamese: "বাতিল কৰা হৈছে।",
+        Manipuri: "কেন্সেল তৌরে।",
+        Bodo: "बातिल खालामबाय।",
         Urdu: "منسوخ کر دیا گیا۔"
     },
     lang_invalid: {
@@ -156,6 +183,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "എനിക്ക് മനസ്സിലായില്ല. വീണ്ടും ശ്രമിക്കുക.",
         Punjabi: "ਮੈਨੂੰ ਸਮਝ ਨਹੀਂ ਆਇਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
         Odia: "ମୁଁ ବୁଝିପାରିଲି ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ |",
+        Assamese: "মই বুজিব পৰা নাই। অনুগ্ৰহ কৰি আকৌ চেষ্টা কৰক।",
+        Manipuri: "ঐহাক খঙবাঙমদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।",
+        Bodo: "आं बुजियाखै। अननानै फिन नाजा।",
         Urdu: "مجھے سمجھ نہیں آیا۔ براہ کرم دوبارہ کوشش کریں۔"
     },
     desc_start: {
@@ -170,6 +200,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ചുറ്റുപാടുകൾ വിശകലനം ചെയ്യുന്നു.",
         Punjabi: "ਆਲੇ ਦੁਆਲੇ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ।",
         Odia: "ପରିବେଶ ବିଶ୍ଳେଷଣ କରୁଛି |",
+        Assamese: "চাৰিওফালৰ পৰিৱেশ বিশ্লেষণ কৰা হৈছে।",
+        Manipuri: "অকোয়বগী ফিভম এনালাইজ তৌরি।",
+        Bodo: "सोरगिदिं थासारिखौ बिजिरगासिनो।",
         Urdu: "ارد گرد کا تجزیہ کر رہا ہے۔"
     },
     currency_start: {
@@ -184,6 +217,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ക്യാമറയ്ക്ക് മുന്നിൽ കറൻസി കാണിക്കുക.",
         Punjabi: "ਕੈਮਰੇ ਦੇ ਸਾਹਮਣੇ ਕਰੰਸੀ ਦਿਖਾਓ।",
         Odia: "କ୍ୟାମେରା ସାମ୍ନାରେ ମୁଦ୍ରା ଦେଖାନ୍ତୁ |",
+        Assamese: "কেমেৰাৰ সন্মুখত মুদ্ৰা দেখুৱাওক।",
+        Manipuri: "কেমেরাগী মাংদা শেনফম অদু উৎলীয়ু।",
+        Bodo: "केमेरानि सिगाङाव रांखौ दिन्थि।",
         Urdu: "کیمرے کے سامنے کرنسی دکھائیں۔"
     },
     service_unavail: {
@@ -198,6 +234,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "സേവനം ലഭ്യമല്ല.",
         Punjabi: "ਸੇਵਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
         Odia: "ସେବା ଉପଲବ୍ଧ ନାହିଁ |",
+        Assamese: "সেৱা উপলব্ধ নহয়।",
+        Manipuri: "সর্ভিস ফংদে।",
+        Bodo: "सिबिथाइ गैया।",
         Urdu: "سروس دستیاب نہیں ہے۔"
     },
     camera_unavail: {
@@ -212,6 +251,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ക്യാമറ ലഭ്യമല്ല.",
         Punjabi: "ਕੈਮਰਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
         Odia: "କ୍ୟାମେରା ଉପଲବ୍ଧ ନାହିଁ |",
+        Assamese: "কেমেৰা উপলব্ধ নহয়।",
+        Manipuri: "কেমেরা ফংদে।",
+        Bodo: "केमेरा गैया।",
         Urdu: "کیمرہ دستیاب نہیں ہے۔"
     },
     btn_navigate: {
@@ -226,6 +268,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "നാവിഗേറ്റ് ചെയ്യുക",
         Punjabi: "ਨੈਵੀਗੇਟ",
         Odia: "ନେଭିଗେଟ୍",
+        Assamese: "নেভিগেট",
+        Manipuri: "নেভিগেত",
+        Bodo: "नेभिगेट",
         Urdu: "نیویگیٹ"
     },
     btn_find: {
@@ -240,6 +285,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "വസ്തു കണ്ടെത്തുക",
         Punjabi: "ਵਸਤੂ ਲੱਭੋ",
         Odia: "ବସ୍ତୁ ଖୋଜ",
+        Assamese: "বস্তু বিচাৰক",
+        Manipuri: "পোৎলম থীবিয়ু",
+        Bodo: "मुवा नागिर",
         Urdu: "چیز تلاش کریں"
     },
     btn_describe: {
@@ -254,6 +302,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "രംഗം വിവരിക്കുക",
         Punjabi: "ਦ੍ਰਿਸ਼ ਦਾ ਵਰਣਨ ਕਰੋ",
         Odia: "ଦୃଶ୍ୟ ବର୍ଣ୍ଣନା କରନ୍ତୁ",
+        Assamese: "দৃশ্যৰ বৰ্ণনা কৰক",
+        Manipuri: "সীন অদু শুগাইনা তাকপিয়ু",
+        Bodo: "नुथायनि बेखेवनाय हो",
         Urdu: "منظر بیان کریں"
     },
     btn_currency: {
@@ -268,6 +319,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "കറൻസി",
         Punjabi: "ਕਰੰਸੀ",
         Odia: "ମୁଦ୍ରା",
+        Assamese: "মুদ্ৰা",
+        Manipuri: "শেনফম",
+        Bodo: "रां",
         Urdu: "کرنسی"
     },
     btn_language: {
@@ -282,6 +336,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ഭാഷ",
         Punjabi: "ਭਾਸ਼ਾ",
         Odia: "ଭାଷା",
+        Assamese: "ভাষা",
+        Manipuri: "লোন",
+        Bodo: "राव",
         Urdu: "زبان"
     },
     btn_notify: {
@@ -296,6 +353,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "അറിയിപ്പ് പ്രദേശം",
         Punjabi: "ਸੂਚਿਤ ਖੇਤਰ",
         Odia: "ସୂଚିତ ଅଞ୍ଚଳ",
+        Assamese: "অৱগত অঞ্চল",
+        Manipuri: "খঙহনবগী এরিয়া",
+        Bodo: "फोसावनाय ओनसोल",
         Urdu: "مطلع کرنے کا علاقہ"
     },
     btn_permissions: {
@@ -310,6 +370,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "അനുമതികൾ",
         Punjabi: "ਇਜਾਜ਼ਤਾਂ",
         Odia: "ଅନୁମତିଗୁଡିକ",
+        Assamese: "অনুমতিসমূহ",
+        Manipuri: "অয়াবশিং",
+        Bodo: "बिथोनफोर",
         Urdu: "اجازتیں"
     },
     btn_emergency: {
@@ -324,6 +387,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "അടിയന്തര വിവരങ്ങൾ",
         Punjabi: "ਐਮਰਜੈਂਸੀ ਜਾਣਕਾਰੀ",
         Odia: "ଜରୁରୀକାଳୀନ ସୂଚନା |",
+        Assamese: "জৰুৰীকালীন তথ্য",
+        Manipuri: "ইমর্জেন্সীগী পাউ",
+        Bodo: "खिथिरनि मुरा",
         Urdu: "ہنگامی معلومات"
     },
     btn_analyze_again: {
@@ -372,6 +438,9 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Malayalam: "ടോക്കണുകൾ പൂർത്തിയായി.",
         Punjabi: "ਟੋਕਨ ਖਤਮ ਹੋ ਗਏ ਹਨ।",
         Odia: "ଟୋକନ୍ ଶେଷ ହୋଇଛି |",
+        Assamese: "টোকেন শেষ হৈছে।",
+        Manipuri: "তোকেন লোইরে।",
+        Bodo: "टोकन जोब्बाय।",
         Urdu: "ٹوکن ختم ہو گئے ہیں۔"
     },
     btn_about: {
