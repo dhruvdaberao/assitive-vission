@@ -583,7 +583,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
-      <video ref={videoRef} className="hidden" playsInline muted />
+      <video ref={videoRef} className="absolute w-[1px] h-[1px] opacity-0 pointer-events-none" autoPlay playsInline muted />
 
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (

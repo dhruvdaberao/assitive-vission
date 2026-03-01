@@ -8,18 +8,24 @@ export function useCamera() {
 
   useEffect(() => {
     async function setupCamera() {
+      // Check if mediaDevices are inherently available (secure context required)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('Camera API not available. Please ensure you are using HTTPS or localhost.');
+        return;
+      }
+
       try {
         // Try to get the rear camera first
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
         });
         attachStream(mediaStream);
       } catch (err: unknown) {
         // Suppress warning to avoid confusing users when falling back
         try {
           // Fallback to any available camera (fixes OverconstrainedError on laptops)
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true 
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: true
           });
           attachStream(fallbackStream);
         } catch (fallbackErr: unknown) {
@@ -33,10 +39,16 @@ export function useCamera() {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setIsReady(true);
-          setError(null);
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current?.play();
+            setIsReady(true);
+            setError(null);
+          } catch (playbackErr) {
+            console.error('Failed to auto-play video:', playbackErr);
+            // Sometimes autoplay is blocked until user interacts, but we can still be ready
+            setIsReady(true);
+          }
         };
       }
     }
@@ -53,13 +65,13 @@ export function useCamera() {
 
   const captureImage = useCallback((): string | null => {
     if (!videoRef.current || !isReady) return null;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    
+
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', 0.8);
   }, [isReady]);
