@@ -8,42 +8,246 @@ import { useCamera } from './hooks/useCamera';
 import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } from './hooks/useSpeech';
 // In a production app, this would call our custom backend, not Gemini directly.
 import { analyzeScene } from './services/gemini';
-import { Search, Eye, Map, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2 } from 'lucide-react';
+import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2, Info, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { QRCodeSVG } from 'qrcode.react';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
-const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+function MapUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 14);
+  }, [center, map]);
+  return null;
+}
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet icons in React
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+import { t } from './translations';
+import { useGeofencing } from './hooks/useGeofencing';
+
+const LANGUAGES = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Assamese', 'Manipuri', 'Bodo', 'Urdu'];
+
+const BannerCarousel = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const images = [
+    '/images/banner/banner1.png',
+    '/images/banner/banner2.png',
+    '/images/banner/banner3.png',
+    '/images/banner/banner4.png',
+    '/images/banner/banner5.png',
+    '/images/banner/banner6.png',
+    '/images/banner/banner7.png',
+    '/images/banner/banner8.png'
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [images.length]);
+
+  return (
+    <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-transparent overflow-hidden mb-4 shadow-sm">
+      <AnimatePresence>
+        <motion.img
+          key={currentIndex}
+          src={images[currentIndex]}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full object-contain"
+          alt={`Banner ${currentIndex + 1}`}
+        />
+      </AnimatePresence>
+      <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 z-10 pb-2">
+        {images.map((_, idx) => (
+          <div key={idx} className={`h-2 rounded-full transition-all duration-500 ${idx === currentIndex ? 'bg-[#1E88E5] w-6' : 'bg-[#1E88E5]/30 w-2'}`} />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function App() {
   const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
-  
-  const [status, setStatus] = useState('Ready');
+
+  const [currentLanguage, setCurrentLanguage] = useState(() => localStorage.getItem('appLanguage') || 'English');
+  const [status, setStatus] = useState(t('status_ready', 'English'));
   const [processing, setProcessing] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState(localStorage.getItem('appLanguage') || 'English');
   const [currentPage, setCurrentPage] = useState('home');
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const isDarkMode = false; // Add toggle later if needed
-  
+
+  useEffect(() => {
+    if (currentPage === 'home') {
+      setStatus(t('status_ready', currentLanguage));
+    }
+  }, [currentPage, currentLanguage]);
+
   // Feature specific states
   const [destination, setDestination] = useState('');
+  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | null>(null);
   const [targetObject, setTargetObject] = useState('');
 
   // Emergency feature states
   const [isEditingEmergency, setIsEditingEmergency] = useState(false);
   const [emergencyData, setEmergencyData] = useState({
-    name: 'John Doe',
-    age: '35',
-    bloodType: 'O+',
-    contactName: 'Jane Doe',
-    contactPhone: '911'
+    name: '',
+    age: '',
+    bloodType: '',
+    contactName: '',
+    contactPhone: ''
+  });
+
+  // Notify feature states
+  const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
+  const [newNumber, setNewNumber] = useState('');
+  const [notifyName, setNotifyName] = useState('');
+  const [sandboxCode, setSandboxCode] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
+  const [isLocationSaved, setIsLocationSaved] = useState(false);
+
+  // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        let uid = localStorage.getItem('echo_user_id');
+        if (!uid) {
+          uid = crypto.randomUUID();
+          localStorage.setItem('echo_user_id', uid);
+        }
+
+        const docRef = doc(db, "users", uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.settings?.language) setCurrentLanguage(data.settings.language);
+          if (data.settings?.notifyName) setNotifyName(data.settings.notifyName);
+          if (data.settings?.sandboxCode) setSandboxCode(data.settings.sandboxCode);
+          if (data.medicalInfo) setEmergencyData(data.medicalInfo);
+          if (data.guardianNumbers) setNotifyNumbers(data.guardianNumbers);
+        } else {
+          // Document does not exist, initialize it with safe defaults
+          await setDoc(docRef, {
+            guardianNumbers: [],
+            medicalInfo: { name: '', age: '', bloodType: '', contactName: '', contactPhone: '' },
+            settings: {
+              language: 'English',
+              notifyName: '',
+              sandboxCode: ''
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load user data from Firebase:", error);
+      } finally {
+        setIsAppLoading(false);
+      }
+    };
+    initializeApp();
+  }, []);
+
+  const handleSearchLocation = async () => {
+    if (!searchQuery.trim() || isLocationSaved) return;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setDestCoords({ lat, lng: lon });
+        setMapCenter([lat, lon]);
+        setDestination(data[0].display_name.split(',')[0]);
+        speak("Location found. Please save to activate tracking.");
+      } else {
+        speak("Location not found.");
+      }
+    } catch (e) {
+      speak("Error searching location.");
+    }
+  };
+
+  // Persist Notify & App Details to Firebase (Debounced)
+  useEffect(() => {
+    if (!isAppLoading) {
+      const timeout = setTimeout(async () => {
+        try {
+          const uid = localStorage.getItem('echo_user_id');
+          if (uid) {
+            const userRef = doc(db, "users", uid);
+            await setDoc(userRef, {
+              guardianNumbers: notifyNumbers,
+              medicalInfo: emergencyData,
+              settings: {
+                language: currentLanguage,
+                notifyName: notifyName,
+                sandboxCode: sandboxCode
+              }
+            }, { merge: true });
+          }
+        } catch (e) {
+          console.error("Firebase sync error", e);
+        }
+      }, 1000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading]);
+
+  // Persist local-only map coordinates (non-sensitive)
+  useEffect(() => {
+    localStorage.setItem('destination', destination);
+  }, [destination]);
+
+  useEffect(() => {
+    localStorage.setItem('destCoords', JSON.stringify(destCoords));
+  }, [destCoords]);
+
+  useEffect(() => {
+    localStorage.setItem('mapCenter', JSON.stringify(mapCenter));
+  }, [mapCenter]);
+
+  useEffect(() => {
+    localStorage.setItem('isLocationSaved', isLocationSaved.toString());
+  }, [isLocationSaved]);
+
+  // Geofencing integration
+  const { currentDistance, hasReached } = useGeofencing({
+    destinationLat: destCoords?.lat ?? 0,
+    destinationLng: destCoords?.lng ?? 0,
+    destinationName: destination || 'Custom Location',
+    userName: notifyName, // Use the new Notify Name for location updates
+    notifyNumbers: notifyNumbers.length > 0 ? notifyNumbers : [emergencyData.contactPhone], // Fallback to emergency contact if empty
+    enabled: isLocationSaved && destCoords !== null
   });
 
   // Welcome message
   useEffect(() => {
     const timer = setTimeout(() => {
-      speak("Single tap to hear button name. Double tap to open feature.");
+      void speak(t('welcome_message', currentLanguage));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [speak]);
+  }, [speak, currentLanguage]);
+
+  // AI Quota Optimization: 3 Second Debouncer
+  const lastVisionCallRef = useRef<number>(0);
 
   // --- Page Lifecycle & Voice Prompts ---
   useEffect(() => {
@@ -53,88 +257,104 @@ export default function App() {
       if (currentPage === 'navigate') {
         setDestination('');
         try {
-          const dest = await speakAndListen("Where do you want to go?", 2);
+          const dest = await speakAndListen(t('nav_prompt', currentLanguage), 3);
           if (isActive && dest) {
             setDestination(dest);
-            await speak(`Navigating to ${dest}. Path clear. Walk forward.`);
-            setStatus(`Navigating to ${dest}`);
+            await speak(t('nav_confirm', currentLanguage));
+            handleNavigate(dest);
           }
         } catch (e) {
           if (isActive) {
-            await speak("No destination detected. Returning to home.");
+            await speak(t('nav_fail', currentLanguage));
             setCurrentPage('home');
           }
         }
       } else if (currentPage === 'find') {
         setTargetObject('');
         try {
-          const obj = await speakAndListen("What are you looking for?", 2);
+          const obj = await speakAndListen(t('find_prompt', currentLanguage), 2);
           if (isActive && obj) {
             setTargetObject(obj);
-            await speak(`Looking for ${obj}. Scanning area.`);
+            await speak(obj + ". " + t('find_confirm', currentLanguage));
             handleFindObject(obj);
           }
         } catch (e) {
           if (isActive) {
-            await speak("No object detected. Returning to home.");
+            await speak(t('find_fail', currentLanguage));
             setCurrentPage('home');
           }
         }
       } else if (currentPage === 'language') {
         try {
-          const ans = await speakAndListen("Do you want to change language? Say yes or no.");
-          if (ans.toLowerCase().includes('yes') || ans.toLowerCase().includes('haan') || ans.toLowerCase().includes('हाँ')) {
-            let validChoice = false;
-            let retries = 0;
-            while (isActive && !validChoice && retries < 3) {
-              try {
-                const numStr = await speakAndListen("Say 1 for Hindi. Say 2 for Marathi. Say 3 for Tamil. Say 4 for Telugu. Say 5 for Bengali. Say 0 to cancel.");
-                const num = parseSpokenNumber(numStr);
-                
-                let newLang = '';
-                if (num === 1) newLang = 'Hindi';
-                else if (num === 2) newLang = 'Marathi';
-                else if (num === 3) newLang = 'Tamil';
-                else if (num === 4) newLang = 'Telugu';
-                else if (num === 5) newLang = 'Bengali';
-                else if (num === 0) {
-                  await speak("Cancelled.");
-                  validChoice = true;
-                  break;
-                }
-                
-                if (newLang) {
-                  setCurrentLanguage(newLang);
-                  localStorage.setItem('appLanguage', newLang);
-                  const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
-                  await speak(confirmText);
-                  validChoice = true;
-                } else {
-                  retries++;
-                  if (retries < 3) await speak("Invalid choice. Please say a number between 0 and 5.");
-                }
-              } catch (e) {
-                retries++;
-                if (isActive && retries < 3) await speak("Please repeat.");
-              }
+          // Play single instruction prompt once
+          await speak(t('lang_prompt_visual', currentLanguage));
+
+          let isActiveSelection = true;
+          // Start open listening loop for language names
+          while (isActiveSelection && isActive) {
+            const ans = await listen();
+            if (!ans) continue;
+
+            const ansLower = ans.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim();
+            const words = ansLower.split(/\s+/);
+            console.log("Language spoken input:", ansLower);
+
+            let newLang = '';
+            // Checking against 11 supported languages and cancel
+            if (words.some(w => ['hindi', 'हिंदी'].includes(w))) newLang = 'Hindi';
+            else if (words.some(w => ['marathi', 'मराठी'].includes(w))) newLang = 'Marathi';
+            else if (words.some(w => ['english', 'अंग्रेज़ी', 'इंग्रजी'].includes(w))) newLang = 'English';
+            else if (words.some(w => ['tamil', 'தமிழ்'].includes(w))) newLang = 'Tamil';
+            else if (words.some(w => ['telugu', 'తెలుగు'].includes(w))) newLang = 'Telugu';
+            else if (words.some(w => ['bengali', 'বাংলা', 'bangla'].includes(w))) newLang = 'Bengali';
+            else if (words.some(w => ['gujarati', 'ગુજરાતી'].includes(w))) newLang = 'Gujarati';
+            else if (words.some(w => ['kannada', 'ಕನ್ನಡ'].includes(w))) newLang = 'Kannada';
+            else if (words.some(w => ['malayalam', 'മലയാളം'].includes(w))) newLang = 'Malayalam';
+            else if (words.some(w => ['punjabi', 'ਪੰਜਾਬੀ'].includes(w))) newLang = 'Punjabi';
+            else if (words.some(w => ['odia', 'ଓଡ଼ିଆ', 'oriya'].includes(w))) newLang = 'Odia';
+            else if (words.some(w => ['assamese', 'অসমীয়া', 'asamiya'].includes(w))) newLang = 'Assamese';
+            else if (words.some(w => ['manipuri', 'মৈতৈ', 'meitei'].includes(w))) newLang = 'Manipuri';
+            else if (words.some(w => ['bodo', 'बर'].includes(w))) newLang = 'Bodo';
+            else if (words.some(w => ['urdu', 'اردو'].includes(w))) newLang = 'Urdu';
+            else if (words.some(w => ['cancel', 'stop', 'rad', 'रद्द'].includes(w))) {
+              await speak(t('lang_cancelled', currentLanguage));
+              setCurrentPage('home');
+              isActiveSelection = false;
+              break;
             }
-            if (!validChoice && isActive) {
-              await speak("Too many invalid attempts. Returning to home.");
+
+            if (newLang) {
+              console.log("Language successfully matched to:", newLang);
+              setCurrentLanguage(newLang);
+              localStorage.setItem('appLanguage', newLang);
+
+              stopListening();
+
+              const confirmText = LANGUAGE_CONFIG[newLang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${newLang}`;
+              await new Promise(r => setTimeout(r, 600));
+              await speak(confirmText);
+
+              setCurrentPage('home');
+              isActiveSelection = false;
+              break;
+            } else {
+              await speak(t('lang_invalid', currentLanguage));
             }
-          } else {
-            await speak("Cancelled.");
           }
         } catch (e) {
-          if (isActive) await speak("Please repeat.");
-        } finally {
           if (isActive) setCurrentPage('home');
         }
       } else if (currentPage === 'describe') {
-        await speak("Analyzing surroundings.");
+        await speak(t('desc_start', currentLanguage));
         handleDescribeScene();
       } else if (currentPage === 'currency') {
-        await speak("Show currency in front of camera.");
+        await speak(t('currency_start', currentLanguage));
         handleIdentifyCurrency();
+      } else if (currentPage === 'notify') {
+        // Guide user based on their language
+        const p1 = t('btn_notify', currentLanguage) || "Notify Area";
+        const p2 = currentLanguage === 'English' ? ". Please type receiver details and pick a destination." : "";
+        await speak(p1 + p2);
       }
     };
 
@@ -146,137 +366,320 @@ export default function App() {
       isActive = false;
       stopListening();
     };
-  }, [currentPage]);
+  }, [currentLanguage, currentPage, listen, speak, speakAndListen, stopListening]);
 
   // --- Feature Handlers ---
-  // Note: In production, these call our backend (e.g., POST /api/v1/vision/describe)
+  const checkThrottle = (): boolean => {
+    const now = Date.now();
+    if (now - lastVisionCallRef.current < 3000) {
+      console.log('Frame throttled (cooldown active).');
+      return false;
+    }
+    lastVisionCallRef.current = now;
+    return true;
+  };
+
+  const handleCameraUnavailable = useCallback(async () => {
+    const message = cameraError || t('camera_unavail', currentLanguage);
+    setStatus(message);
+    await speak(message);
+    setTimeout(() => setCurrentPage('home'), 1000);
+  }, [cameraError, currentLanguage, speak]);
+
+  const handleCaptureUnavailable = useCallback(async () => {
+    const message = t('camera_not_ready', currentLanguage) || 'Camera is warming up, please try again.';
+    setStatus(message);
+    await speak(message);
+    setTimeout(() => setCurrentPage('home'), 1500);
+  }, [currentLanguage, speak]);
+
   const handleDescribeScene = async () => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) {
+      await handleCameraUnavailable();
+      return;
+    }
+    if (!checkThrottle()) return;
     setProcessing(true);
-    setStatus("Analyzing scene...");
+    setStatus(t('status_analyzing', currentLanguage));
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, "Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences.");
-        setStatus(response);
-        await speak(response);
+        const response = await analyzeScene(image, `Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences. Reply ONLY in the ${currentLanguage} language.`);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       } else {
-        setStatus("Failed to capture image.");
-        speak("Failed to capture image.");
+        await handleCaptureUnavailable();
       }
-    } catch (e) {
-      setStatus("Service unavailable.");
-      speak("Service unavailable.");
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        const message = t('tokens_finished', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      } else {
+        const message = t('service_unavail', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleIdentifyCurrency = async () => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) {
+      await handleCameraUnavailable();
+      return;
+    }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus("Identifying currency...");
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, "Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'");
-        setStatus(response);
-        await speak(response);
+        const response = await analyzeScene(image, `Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'. Reply ONLY in the ${currentLanguage} language.`);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       } else {
-        setStatus("Failed to capture image.");
-        speak("Failed to capture image.");
+        await handleCaptureUnavailable();
       }
-    } catch (e) {
-      setStatus("Service unavailable.");
-      speak("Service unavailable.");
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        const message = t('tokens_finished', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      } else {
+        const message = t('service_unavail', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleFindObject = async (objName: string) => {
-    if (!cameraReady) { speak("Camera unavailable."); return; }
+    if (!cameraReady) {
+      await handleCameraUnavailable();
+      return;
+    }
+    if (!checkThrottle()) return;
     setProcessing(true);
     setStatus(`Looking for ${objName}...`);
     try {
       const image = captureImage();
       if (image) {
-        const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short.`);
-        setStatus(response);
-        await speak(response);
+        const response = await analyzeScene(image, `Find the ${objName} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short. Reply ONLY in the ${currentLanguage} language.`);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
         setTimeout(() => setCurrentPage('home'), 1000);
       } else {
-        setStatus("Failed to capture image.");
-        speak("Failed to capture image.");
+        await handleCaptureUnavailable();
+      }
+    } catch (e: any) {
+      if (e?.message === "TOKENS_FINISHED" || e === "TOKENS_FINISHED") {
+        const message = t('tokens_finished', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      } else {
+        const message = t('service_unavail', currentLanguage);
+        setStatus(message);
+        await speak(message);
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleNavigate = async (dest: string) => {
+    if (!cameraReady) {
+      await handleCameraUnavailable();
+      return;
+    }
+    if (!checkThrottle()) return;
+    setProcessing(true);
+    setStatus(`Navigating to ${dest}...`);
+    try {
+      const image = captureImage();
+      if (image) {
+        const response = await analyzeScene(image, `The user wants to navigate to: ${dest}. Describe the immediate path forward, identifying any obstacles, doors, or turns. Keep it under 2 sentences. Reply ONLY in the ${currentLanguage} language.`);
+        if (response === "TOKENS_FINISHED") {
+          const warning = t('tokens_finished', currentLanguage);
+          setStatus(warning);
+          await speak(warning);
+        } else if (response === "SYSTEM_BUSY") {
+          const warning = t('system_busy', currentLanguage) || "System is busy. Please wait.";
+          setStatus(warning);
+          await speak(warning);
+        } else {
+          setStatus(response);
+          await speak(response);
+        }
+        setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        await handleCaptureUnavailable();
       }
     } catch (e) {
-      setStatus("Service unavailable.");
-      speak("Service unavailable.");
+      const message = t('service_unavail', currentLanguage);
+      setStatus(message);
+      await speak(message);
     } finally {
       setProcessing(false);
     }
   };
 
   // --- Theme Classes ---
-  const bgClass = isDarkMode ? "bg-gray-900 text-white" : "bg-white text-gray-900";
-  const cardClass = isDarkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900";
-  const headerClass = isDarkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200";
-  const inputClass = isDarkMode ? "bg-gray-800 border-gray-700 text-white focus:ring-white" : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-gray-900";
+  // Requested Light Mode: bg #F4F9FF, cards white, text #0D47A1. Dark Mode: bg #0A192F, cards #112240, text #E3F2FD.
+  const bgClass = isDarkMode ? "bg-[#0A192F] text-[#E3F2FD]" : "bg-[#F4F9FF] text-[#0D47A1]";
+  const cardClass = isDarkMode ? "bg-[#112240] border-[#112240] text-[#E3F2FD] shadow-md" : "bg-white border-white text-[#0D47A1] shadow-md";
+  const headerClass = "bg-gradient-to-r from-[#1E88E5] to-[#42A5F5] border-transparent text-white shadow-lg";
+  const inputClass = isDarkMode ? "bg-[#0A192F] border-[#42A5F5] text-[#E3F2FD] focus:ring-[#42A5F5]" : "bg-[#E3F2FD] border-[#1E88E5] text-[#0D47A1] focus:ring-[#1E88E5]";
+  const buttonGradientClass = "bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] text-white border-transparent";
 
   // --- Render Helpers ---
   const renderHeader = (title: string, showBack = true) => (
-    <header className={`fixed top-0 w-full z-[1000] h-16 px-4 border-b flex justify-between items-center shadow-sm ${headerClass}`}>
+    <header className={`fixed top-0 w-full z-[1000] h-16 px-4 flex justify-between items-center ${headerClass}`}>
       <div className="w-1/4 flex justify-start">
         {showBack && (
-          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); }} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}>
-            <ArrowLeft className={isDarkMode ? "text-white" : "text-gray-900"} />
+          <button onClick={() => { setCurrentPage('home'); stopSpeaking(); stopListening(); setDestCoords(null); }} className="p-2 rounded-full hover:bg-white/20 transition-colors">
+            <ArrowLeft className="text-white" />
           </button>
         )}
       </div>
-      <div className="w-2/4 flex items-center justify-center gap-2 text-center">
+      <div className="w-2/4 flex items-center justify-center gap-3 text-center">
         {!showBack && (
-          <img 
-            src="/icon.svg" 
-            alt="App Logo" 
-            className="max-h-[36px] w-auto object-contain p-1" 
+          <img
+            src="/eye.png"
+            alt="App Logo"
+            className="max-h-[44px] w-auto object-contain drop-shadow-md brightness-0 invert"
           />
         )}
-        <h1 className="text-lg font-bold tracking-tight whitespace-nowrap">{title}</h1>
+        <h1 className={`${showBack ? 'text-xl' : 'text-3xl'} font-extrabold tracking-tight whitespace-nowrap drop-shadow-sm`} style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", fontWeight: 900 }}>
+          {title.replace('EchoSight', 'Echo-Sight')}
+        </h1>
       </div>
       <div className="w-1/4 flex justify-end items-center gap-3">
-        {isListening && <Mic className="text-red-500 animate-pulse" size={20} />}
-        {isSpeaking && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+        {isListening && <Mic className="text-white animate-pulse" size={20} />}
+        {isSpeaking && <div className="w-2 h-2 rounded-full bg-white animate-pulse" />}
       </div>
     </header>
   );
 
+  // Permissions State Hook
+  const [sysPermissions, setSysPermissions] = useState({ camera: 'prompt', mic: 'prompt', location: 'prompt' });
+
+  useEffect(() => {
+    if (currentPage === 'permissions') {
+      const checkPermissions = async () => {
+        try {
+          const cam = await navigator.permissions.query({ name: 'camera' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          const mic = await navigator.permissions.query({ name: 'microphone' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          const loc = await navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          setSysPermissions({ camera: cam, mic, location: loc });
+        } catch { } // If browser blocks query, fail silently and keep as prompt
+      };
+      checkPermissions();
+      // Poll every 2 seconds while page is open so it live-updates if user changes OS settings
+      const interval = setInterval(checkPermissions, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [currentPage]);
+
+  const handleRequestSysPermission = async (type: string) => {
+    try {
+      if (type === 'camera') {
+        await navigator.mediaDevices.getUserMedia({ video: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
+      } else if (type === 'microphone') {
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
+      } else if (type === 'geolocation') {
+        await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+      }
+    } catch (e) {
+      speak(`Please click the browser lock icon to enable ${type} permission.`);
+    }
+  };
+
+  if (isAppLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${bgClass}`}>
+        <div className="flex flex-col items-center">
+          <img src="/eye-padded.png" alt="Loading" className="w-24 h-24 mb-4 drop-shadow-lg object-contain animate-pulse" />
+          <p className="text-xl font-bold" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif", fontWeight: 800 }}>Echo-Sight</p>
+          <div className="mt-4 w-6 h-6 border-4 border-current border-t-transparent rounded-full animate-spin opacity-50"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
-      <video ref={videoRef} className="sr-only pointer-events-none" playsInline autoPlay muted />
+      <video ref={videoRef} className="fixed top-[-2000px] left-[-2000px] w-10 h-10 pointer-events-none" autoPlay playsInline muted />
 
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
-            {renderHeader('Assistive Vision', false)}
-            
-            <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-              <p className={`text-2xl font-medium leading-relaxed max-w-2xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                {status}
-              </p>
-              {cameraError && <p className="text-red-500 mt-4 text-sm">Camera Error: {cameraError}</p>}
-            </div>
+            {renderHeader(t('app_title', currentLanguage) || 'EchoSight', false)}
 
-            <div className="grid grid-cols-2 gap-4 p-4 pb-8 overflow-y-auto">
-              <AccessibleButton icon={<Map size={36} />} label="Navigate" onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Search size={36} />} label="Find Object" onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Eye size={36} />} label="Describe Scene" onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Banknote size={36} />} label="Currency" onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
-              <AccessibleButton icon={<Languages size={36} />} label="Language" onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-              <AccessibleButton icon={<Shield size={36} />} label="Permissions" onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
-              <div className="col-span-2">
-                <AccessibleButton icon={<HeartPulse size={36} />} label="Emergency Info" onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 text-white border-red-700" />
+            {(status !== t('status_ready', currentLanguage) || cameraError) && (
+              <div className="flex-none px-4 pt-4 flex flex-col items-center justify-center">
+                {status !== t('status_ready', currentLanguage) && (
+                  <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                    <p className="text-lg font-semibold">{status}</p>
+                  </div>
+                )}
+                {cameraError && (
+                  <div className="bg-red-50 text-red-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
+                    <p className="text-sm font-semibold">Camera Error: {cameraError}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <BannerCarousel />
+
+            <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
+              <div className="grid grid-cols-2 gap-4 w-full h-full content-start max-w-md mx-auto">
+                <AccessibleButton icon={<MapIcon size={36} />} label={t('btn_navigate', currentLanguage)} onActivate={() => { setCurrentPage('navigate'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Search size={36} />} label={t('btn_find', currentLanguage)} onActivate={() => { setCurrentPage('find'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
+                <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
+                <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Bell size={36} />} label={t('btn_notify', currentLanguage) || "Notify Area"} onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 border-red-700 text-white" />
+                <AccessibleButton icon={<Info size={36} />} label={t('btn_about', currentLanguage)} onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
+                <AccessibleButton icon={<HelpCircle size={36} />} label={t('btn_how_to_use', currentLanguage)} onActivate={() => { setCurrentPage('how-to-use'); }} speak={speak} color={cardClass} />
               </div>
             </div>
           </motion.div>
@@ -284,12 +687,14 @@ export default function App() {
 
         {currentPage === 'navigate' && (
           <motion.div key="navigate" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Navigation')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
-               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
-                 {status}
-               </div>
+            {renderHeader(t('btn_navigate', currentLanguage) || 'Live Navigation')}
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
+              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
+                {destination ? `Navigating to: ${destination}` : "Listening..."}
+                <br />
+                <span className="text-lg font-normal">{status}</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -297,13 +702,13 @@ export default function App() {
         {currentPage === 'find' && (
           <motion.div key="find" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader('Find Object')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
-               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
-                 {targetObject ? `Finding: ${targetObject}` : "Listening..."}
-                 <br/>
-                 <span className="text-lg font-normal">{status}</span>
-               </div>
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
+              <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
+                {targetObject ? `Finding: ${targetObject}` : "Listening..."}
+                <br />
+                <span className="text-lg font-normal">{status}</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -311,18 +716,18 @@ export default function App() {
         {(currentPage === 'describe' || currentPage === 'currency') && (
           <motion.div key="camera-feature" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(currentPage === 'describe' ? 'Describe Scene' : 'Identify Currency')}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0" /> : <p className="text-white text-sm">Camera Off</p>}
+            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
+              {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
             </div>
-            <div className={`p-6 border-t min-h-[200px] flex flex-col items-center justify-center gap-6 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-              <p className={`text-xl font-medium text-center leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{status}</p>
-              <AccessibleButton 
-                icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />} 
-                label="Analyze Again" 
-                onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()} 
-                speak={speak} 
-                disabled={processing} 
-                color={isDarkMode ? "bg-white text-gray-900" : "bg-gray-900 text-white"} 
+            <div className={`p-6 border-t border-transparent min-h-[200px] flex flex-col items-center justify-center gap-6 ${cardClass}`}>
+              <p className={`text-xl font-medium text-center leading-relaxed text-[#0D47A1] dark:text-[#E3F2FD]`}>{status}</p>
+              <AccessibleButton
+                icon={currentPage === 'describe' ? <Eye size={24} /> : <Banknote size={24} />}
+                label={t('btn_analyze_again', currentLanguage)}
+                onActivate={() => currentPage === 'describe' ? handleDescribeScene() : handleIdentifyCurrency()}
+                speak={speak}
+                disabled={processing}
+                color={buttonGradientClass}
               />
             </div>
           </motion.div>
@@ -330,21 +735,197 @@ export default function App() {
 
         {currentPage === 'language' && (
           <motion.div key="language" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Change Language')}
-            <div className="flex-1 flex items-center justify-center p-6">
-              <p className="text-2xl font-medium text-center">
-                Listening for language selection...
-              </p>
+            {renderHeader(t('btn_language', currentLanguage))}
+            <div className="p-4 text-center">
+              <p className="text-lg font-medium opacity-80">{t('lang_prompt_visual', currentLanguage)}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-8 w-full">
+              <div className="grid grid-cols-2 gap-4 w-full content-start max-w-md mx-auto">
+                {Object.keys(LANGUAGE_CONFIG).map((lang) => (
+                  <AccessibleButton
+                    key={lang}
+                    icon={<Languages size={24} />}
+                    label={lang}
+                    onActivate={() => {
+                      stopSpeaking();
+                      stopListening();
+                      setCurrentLanguage(lang);
+                      localStorage.setItem('appLanguage', lang);
+                      const confirmText = LANGUAGE_CONFIG[lang as keyof typeof LANGUAGE_CONFIG]?.confirmText || `Language changed to ${lang}`;
+                      speak(confirmText);
+                      setCurrentPage('home');
+                    }}
+                    speak={speak}
+                    color={currentLanguage === lang ? "bg-emerald-600 text-white border-emerald-700" : cardClass}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {currentPage === 'notify' && (
+          <motion.div key="notify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`flex-1 flex flex-col ${bgClass}`}>
+            {renderHeader(t('notify_header', currentLanguage))}
+            <div className="flex-1 p-6 overflow-y-auto space-y-8 pb-20">
+
+              {/* User Details Box */}
+              <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2"><MapIcon size={20} /> {t('notify_details_title', currentLanguage)}</h3>
+                  <button
+                    onClick={() => {
+                      setIsLocationSaved(!isLocationSaved);
+                      if (!isLocationSaved) {
+                        speak("Tracking settings saved.");
+                      } else {
+                        speak("Edit tracking settings.");
+                      }
+                    }}
+                    className={`p-2 rounded-xl text-sm font-bold flex items-center gap-2 ${isLocationSaved ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'}`}
+                  >
+                    {isLocationSaved ? <><Edit2 size={16} /> {t('notify_btn_edit', currentLanguage)}</> : <><Save size={16} /> {t('notify_btn_save', currentLanguage)}</>}
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('notify_name_label', currentLanguage)}</label>
+                    <input
+                      type="text"
+                      value={notifyName}
+                      onChange={e => setNotifyName(e.target.value)}
+                      disabled={isLocationSaved}
+                      placeholder="Enter your name"
+                      className={`w-full p-3 rounded-xl border ${inputClass} ${isLocationSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('notify_dest_title', currentLanguage)}</label>
+                    <input
+                      type="text"
+                      value={destination}
+                      onChange={e => setDestination(e.target.value)}
+                      disabled={isLocationSaved}
+                      placeholder="e.g. Work, Home, Station"
+                      className={`w-full p-3 rounded-xl border ${inputClass} ${isLocationSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                </div>
+
+                {!isLocationSaved && (
+                  <div className="mt-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSearchLocation()}
+                      placeholder={t('notify_dest_label', currentLanguage)}
+                      className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
+                    />
+                    <button
+                      onClick={handleSearchLocation}
+                      className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+                    >
+                      <Search size={20} />
+                    </button>
+                  </div>
+                )}
+
+                <div className={`mt-4 rounded-xl overflow-hidden border shadow-sm h-64 sticky w-full z-0 relative ${isDarkMode ? 'border-[#42A5F5]/30' : 'border-[#1E88E5]/30'}`}>
+                  {isLocationSaved && <div className="absolute inset-0 z-50 bg-black/5 cursor-not-allowed" />}
+                  <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                    <MapUpdater center={mapCenter} />
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                    {destCoords && <Marker position={[destCoords.lat, destCoords.lng]} />}
+                    <MapClickHandler onMapClick={(lat, lng) => {
+                      if (isLocationSaved) return;
+                      setDestCoords({ lat, lng });
+                      setDestination(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
+                      speak("Destination selected. Please save to activate tracking.");
+                    }} />
+                  </MapContainer>
+                </div>
+                {destCoords && (
+                  <div className={`mt-4 p-3 rounded-xl border text-center transition-colors ${isLocationSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : `${inputClass}`}`}>
+                    <h4 className="font-bold flex items-center justify-center gap-2">
+                      {isLocationSaved ? <>{t('notify_tracking_active', currentLanguage)} 🟢</> : <>Tracking Paused ⏸️</>}
+                    </h4>
+                    <p className="text-sm mt-1">Distance: {currentDistance !== null ? `${Math.round(currentDistance)}m` : 'Calculating...'} • WhatsApp Enabled</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Number List Box */}
+              <div className={`p-5 rounded-2xl shadow-sm border ${cardClass}`}>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><PhoneCall size={20} /> {t('notify_contacts_title', currentLanguage)}</h3>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="tel"
+                    value={newNumber}
+                    onChange={e => setNewNumber(e.target.value)}
+                    placeholder="+91..."
+                    className={`flex-1 p-3 rounded-xl border text-sm ${inputClass}`}
+                  />
+                  <button
+                    onClick={() => {
+                      if (newNumber.length >= 10 && !notifyNumbers.includes(newNumber)) {
+                        // Simple E164 fallback formatting if not provided
+                        const formatted = newNumber.startsWith('+') ? newNumber : `+91${newNumber.replace(/\D/g, '')}`;
+                        setNotifyNumbers([...notifyNumbers, formatted]);
+                        setNewNumber('');
+                      }
+                    }}
+                    className="px-4 bg-emerald-600 text-white rounded-xl font-medium"
+                  >
+                    {t('notify_add_btn', currentLanguage)}
+                  </button>
+                </div>
+
+                <ul className="space-y-2">
+                  {notifyNumbers.length === 0 && <p className="text-sm opacity-50 text-center py-2">No numbers added. Will fallback to Emergency Contact.</p>}
+                  {notifyNumbers.map((num) => (
+                    <li key={num} className={`flex justify-between items-center p-3 rounded-xl ${inputClass}`}>
+                      <span className="font-medium tracking-wide">{num}</span>
+                      <button onClick={() => setNotifyNumbers(notifyNumbers.filter(n => n !== num))} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={18} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* QR Share Box */}
+              <div className={`p-6 rounded-2xl shadow-sm border flex flex-col items-center text-center ${cardClass}`}>
+                <div className="bg-white p-4 rounded-xl shadow-inner mb-4">
+                  <QRCodeSVG
+                    value={sandboxCode ? `https://wa.me/14155238886?text=${encodeURIComponent(sandboxCode)}` : `https://wa.me/14155238886`}
+                    size={150}
+                  />
+                </div>
+                <h3 className="font-bold text-lg flex items-center gap-2 justify-center"><QrCode size={20} /> {t('notify_remote_title', currentLanguage)}</h3>
+                <p className="text-sm opacity-70 mt-2 mb-4">{t('notify_remote_sub', currentLanguage)}</p>
+                <input
+                  type="text"
+                  value={sandboxCode}
+                  onChange={e => setSandboxCode(e.target.value)}
+                  placeholder="Enter Sandbox Join Code (e.g. 'join fruit-orange')"
+                  className={`w-full max-w-sm p-3 rounded-xl border text-sm text-center ${inputClass}`}
+                />
+              </div>
+
             </div>
           </motion.div>
         )}
 
         {currentPage === 'emergency' && (
           <motion.div key="emergency" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Emergency Info')}
+            {renderHeader(t('emergency_medical_title', currentLanguage))}
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Medical Details</h2>
+                <h2 className="text-2xl font-bold">{t('emergency_medical_title', currentLanguage)}</h2>
                 <button onClick={() => setIsEditingEmergency(!isEditingEmergency)} className={`p-2 rounded-full ${cardClass}`}>
                   {isEditingEmergency ? <Save size={20} /> : <Edit2 size={20} />}
                 </button>
@@ -352,58 +933,58 @@ export default function App() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium opacity-70 mb-1">Full Name</label>
+                  <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_name_label', currentLanguage)}</label>
                   {isEditingEmergency ? (
-                    <input type="text" value={emergencyData.name} onChange={e => setEmergencyData({...emergencyData, name: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                    <input type="text" value={emergencyData.name} onChange={e => setEmergencyData({ ...emergencyData, name: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                   ) : (
                     <p className="text-xl font-semibold">{emergencyData.name}</p>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Age</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_age_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({...emergencyData, age: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({ ...emergencyData, age: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.age}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium opacity-70 mb-1">Blood Type</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_blood_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({...emergencyData, bloodType: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({ ...emergencyData, bloodType: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold text-red-500">{emergencyData.bloodType}</p>
                     )}
                   </div>
                 </div>
-                
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <h2 className="text-2xl font-bold mb-4">Emergency Contact</h2>
+
+                <div className="mt-8 pt-6 border-t border-[#1E88E5]/20 dark:border-[#42A5F5]/30">
+                  <h2 className="text-2xl font-bold mb-4">{t('emergency_contact_title', currentLanguage)}</h2>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium opacity-70 mb-1">Contact Name</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cname_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.contactName} onChange={e => setEmergencyData({...emergencyData, contactName: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" value={emergencyData.contactName} onChange={e => setEmergencyData({ ...emergencyData, contactName: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactName}</p>
                     )}
                   </div>
                   <div className="mb-6">
-                    <label className="block text-sm font-medium opacity-70 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cphone_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({...emergencyData, contactPhone: e.target.value})} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({ ...emergencyData, contactPhone: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactPhone}</p>
                     )}
                   </div>
 
                   {!isEditingEmergency && (
-                    <a 
-                      href={`tel:${emergencyData.contactPhone}`} 
+                    <a
+                      href={`tel:${emergencyData.contactPhone}`}
                       className="flex items-center justify-center p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
                     >
                       <PhoneCall className="mr-3" size={28} />
-                      Call {emergencyData.contactName}
+                      {t('emergency_call_btn', currentLanguage)} {emergencyData.contactName}
                     </a>
                   )}
                 </div>
@@ -414,35 +995,111 @@ export default function App() {
 
         {currentPage === 'permissions' && (
           <motion.div key="permissions" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Permissions')}
+            {renderHeader(t('page_perm_title', currentLanguage))}
             <div className="flex-1 p-6">
-              <p className="text-lg mb-6 opacity-80">Manage application permissions required for core features.</p>
+              <p className="text-lg mb-6 opacity-80">{t('page_perm_desc', currentLanguage)}</p>
               <div className="space-y-4">
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <Eye className="text-blue-500" />
-                    <span className="font-medium">Camera</span>
+                    <span className="font-medium">{t('page_perm_camera', currentLanguage)}</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.camera === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('camera')} className="text-blue-500 text-sm font-bold border border-blue-500 px-3 py-1 rounded-full hover:bg-blue-50">{t('page_perm_request', currentLanguage)}</button>
+                  )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
                     <Mic className="text-purple-500" />
-                    <span className="font-medium">Microphone</span>
+                    <span className="font-medium">{t('page_perm_mic', currentLanguage)}</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.mic === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('microphone')} className="text-purple-500 text-sm font-bold border border-purple-500 px-3 py-1 rounded-full hover:bg-purple-50">{t('page_perm_request', currentLanguage)}</button>
+                  )}
                 </div>
                 <div className={`p-4 rounded-xl border flex justify-between items-center ${cardClass}`}>
                   <div className="flex items-center gap-3">
-                    <Map className="text-emerald-500" />
-                    <span className="font-medium">Location</span>
+                    <MapIcon className="text-emerald-500" />
+                    <span className="font-medium">{t('page_perm_location', currentLanguage)}</span>
                   </div>
-                  <span className="text-green-500 text-sm font-bold">Granted</span>
+                  {sysPermissions.location === 'granted' ? (
+                    <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
+                  ) : (
+                    <button onClick={() => handleRequestSysPermission('geolocation')} className="text-emerald-500 text-sm font-bold border border-emerald-500 px-3 py-1 rounded-full hover:bg-emerald-50">{t('page_perm_request', currentLanguage)}</button>
+                  )}
                 </div>
               </div>
               <p className="text-sm mt-6 opacity-60 text-center">
-                Permissions can be fully managed in your device's system settings.
+                {t('page_perm_footer', currentLanguage)}
               </p>
+            </div>
+          </motion.div>
+        )}
+        {currentPage === 'about' && (
+          <motion.div key="about" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+            {renderHeader(t('page_about_title', currentLanguage))}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_overview', currentLanguage)}</h2>
+                <p className="text-lg leading-relaxed opacity-90">
+                  {t('page_about_overview_text', currentLanguage)}
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_features', currentLanguage)}</h2>
+                <ul className="list-disc pl-5 space-y-2 text-lg opacity-90">
+                  <li>{t('page_about_feature_1', currentLanguage)}</li>
+                  <li>{t('page_about_feature_2', currentLanguage)}</li>
+                  <li>{t('page_about_feature_3', currentLanguage)}</li>
+                  <li>{t('page_about_feature_4', currentLanguage)}</li>
+                  <li>{t('page_about_feature_5', currentLanguage)}</li>
+                  <li>{t('page_about_feature_6', currentLanguage)}</li>
+                </ul>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_mission', currentLanguage)}</h2>
+                <p className="text-lg leading-relaxed font-medium italic opacity-90">
+                  {t('page_about_mission_text', currentLanguage)}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {currentPage === 'how-to-use' && (
+          <motion.div key="how-to-use" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
+            {renderHeader(t('page_htu_title', currentLanguage))}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Eye size={24} /> {t('page_htu_scene', currentLanguage)}</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  {t('page_htu_scene_text', currentLanguage)}
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><MapIcon size={24} /> {t('page_htu_nav', currentLanguage)}</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  {t('page_htu_nav_text', currentLanguage)}
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Bell size={24} /> {t('page_htu_notify', currentLanguage)}</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  {t('page_htu_notify_text_1', currentLanguage)}<br />
+                  {t('page_htu_notify_text_2', currentLanguage)}<br />
+                  {t('page_htu_notify_text_3', currentLanguage)}
+                </p>
+              </div>
+              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+                <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-500"><HeartPulse size={24} /> {t('page_htu_sos', currentLanguage)}</h2>
+                <p className="text-base leading-relaxed opacity-90">
+                  {t('page_htu_sos_text', currentLanguage)}
+                </p>
+              </div>
             </div>
           </motion.div>
         )}
@@ -458,9 +1115,10 @@ interface AccessibleButtonProps {
   speak: (text: string) => void;
   disabled?: boolean;
   color?: string;
+  key?: string;
 }
 
-function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-gray-900" }: AccessibleButtonProps) {
+function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-[#0D47A1] border-white shadow-md dark:bg-[#112240] dark:text-[#E3F2FD] dark:border-[#112240]" }: AccessibleButtonProps) {
   const handleTap = useAccessibleButton(label, onActivate, speak);
 
   return (
@@ -468,12 +1126,21 @@ function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "b
       whileTap={{ scale: 0.95 }}
       onClick={handleTap}
       disabled={disabled}
-      className={`flex flex-col items-center justify-center p-6 rounded-2xl shadow-sm border ${color} ${disabled ? 'opacity-50' : 'active:opacity-80'} transition-colors touch-manipulation`}
+      className={`flex flex-col items-center justify-center p-6 rounded-[16px] shadow-sm border ${color} ${disabled ? 'opacity-50' : 'active:opacity-80'} transition-colors touch-manipulation`}
     >
       <div className="mb-3 pointer-events-none">{icon}</div>
       <span className="text-lg font-semibold tracking-tight pointer-events-none">{label}</span>
     </motion.button>
   );
+}
+
+function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    }
+  });
+  return null;
 }
 
 function VideoPreview({ stream, className }: { stream: MediaStream | null, className?: string }) {

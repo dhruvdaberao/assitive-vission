@@ -1,45 +1,54 @@
 export async function analyzeScene(base64Image: string, prompt: string, retries = 2): Promise<string> {
-  const base64Data = base64Image.split(',')[1];
-  
-  for (let i = 0; i <= retries; i++) {
+  const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const response = await fetch('/api/vision', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           image: base64Data,
-          prompt: prompt
-        })
+          prompt,
+        }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        if (response.status === 401) return "Vision API key invalid.";
+        if (response.status === 401) {
+          return 'Vision API key invalid.';
+        }
+
         if (response.status === 429) {
-          if (i < retries) {
-            await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+          if (attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
             continue;
           }
-          return "Vision service rate limit exceeded.";
+          return 'TOKENS_FINISHED';
         }
-        throw new Error(data.error || "Vision service failed");
+
+        if (response.status >= 500 && response.status < 600 && attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+
+        throw new Error((data as { error?: string }).error || 'Vision service failed');
       }
 
-      return data.text || "I couldn't analyze the scene.";
+      return (data as { text?: string }).text || "I couldn't analyze the scene.";
     } catch (error: unknown) {
-      console.error(`Vision API Error (Attempt ${i + 1}):`, error);
-      
-      if (i < retries) {
-        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      console.error(`Vision API Error (Attempt ${attempt + 1}):`, error);
+
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
-      
-      return "Vision service temporarily unavailable.";
+
+      return 'Vision service temporarily unavailable.';
     }
   }
-  
-  return "Error connecting to the vision service.";
+
+  return 'Error connecting to the vision service.';
 }
