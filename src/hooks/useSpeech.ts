@@ -176,6 +176,8 @@ export function useSpeech() {
       });
 
       if (!response.ok) {
+        const errorBody = (await response.json().catch(() => ({}))) as { error?: string; details?: string };
+        console.warn('TTS API returned non-OK response:', response.status, errorBody);
         if (response.status === 402 || response.status === 403 || response.status === 429) {
           console.warn('TTS quota exhausted, using browser speech fallback.');
         }

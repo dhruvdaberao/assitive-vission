@@ -1,5 +1,6 @@
 export async function analyzeScene(base64Image: string, prompt: string, retries = 2): Promise<string> {
   const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+  let lastError = 'Vision service temporarily unavailable.';
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
@@ -17,8 +18,11 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const serverError = (data as { error?: string; details?: string }).error || lastError;
+        lastError = serverError;
+
         if (response.status === 401) {
-          return 'Vision API key invalid.';
+          return serverError;
         }
 
         if (response.status === 429) {
@@ -34,21 +38,24 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
           continue;
         }
 
-        throw new Error((data as { error?: string }).error || 'Vision service failed');
+        throw new Error(serverError);
       }
 
       return (data as { text?: string }).text || "I couldn't analyze the scene.";
     } catch (error: unknown) {
       console.error(`Vision API Error (Attempt ${attempt + 1}):`, error);
+      if (error instanceof Error && error.message) {
+        lastError = error.message;
+      }
 
       if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
 
-      return 'Vision service temporarily unavailable.';
+      return lastError;
     }
   }
 
-  return 'Error connecting to the vision service.';
+  return lastError || 'Error connecting to the vision service.';
 }

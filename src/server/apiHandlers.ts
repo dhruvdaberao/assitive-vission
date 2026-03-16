@@ -1,5 +1,4 @@
 import { GoogleGenAI } from '@google/genai';
-import twilio from 'twilio';
 
 type JsonResult = {
   status: number;
@@ -73,7 +72,13 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       return { status: 429, body: { error: 'Vision service rate limit exceeded.' } };
     }
 
-    return { status: 500, body: { error: 'Vision service temporarily unavailable.' } };
+    return {
+      status: 500,
+      body: {
+        error: 'Vision service temporarily unavailable.',
+        details: err.message || 'Unknown vision error.',
+      },
+    };
   }
 }
 
@@ -154,7 +159,14 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
     return { status: lastStatus, body: { error: 'TTS service error.', details: lastError } };
   } catch (error: unknown) {
     console.error('TTS Proxy Error:', error);
-    return { status: 500, body: { error: 'TTS service temporarily unavailable.' } };
+    const err = error as { message?: string };
+    return {
+      status: 500,
+      body: {
+        error: 'TTS service temporarily unavailable.',
+        details: err.message || 'Unknown TTS error.',
+      },
+    };
   }
 }
 
@@ -168,6 +180,7 @@ export async function handleWhatsAppRequest(body: WhatsAppRequestBody): Promise<
   }
 
   try {
+    const { default: twilio } = await import('twilio');
     const client = twilio(sid, auth);
     const { type, userName, destinationName, notifyNumbers, currentLat, currentLng } = body;
 
@@ -220,6 +233,6 @@ export async function handleWhatsAppRequest(body: WhatsAppRequestBody): Promise<
     };
   } catch (error: any) {
     console.error('Twilio Initialization Error:', error);
-    return { status: 500, body: { error: error.message } };
+    return { status: 500, body: { error: error.message, details: error.message } };
   }
 }
