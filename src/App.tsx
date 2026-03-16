@@ -122,6 +122,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [isLocationSaved, setIsLocationSaved] = useState(false);
+  const [isFirebaseEnabled, setIsFirebaseEnabled] = useState(Boolean(db));
 
   // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
   useEffect(() => {
@@ -162,6 +163,11 @@ export default function App() {
         }
       } catch (error) {
         console.error("Failed to load user data from Firebase:", error);
+        const errMessage = error instanceof Error ? error.message : String(error);
+        if (errMessage.includes('ERR_BLOCKED_BY_CLIENT')) {
+          console.warn('Firestore calls are blocked by browser extensions. Running without cloud sync.');
+          setIsFirebaseEnabled(false);
+        }
       } finally {
         setIsAppLoading(false);
       }
@@ -191,7 +197,7 @@ export default function App() {
 
   // Persist Notify & App Details to Firebase (Debounced)
   useEffect(() => {
-    if (!isAppLoading && db) {
+    if (!isAppLoading && db && isFirebaseEnabled) {
       const timeout = setTimeout(async () => {
         try {
           const uid = localStorage.getItem('echo_user_id');
@@ -209,12 +215,17 @@ export default function App() {
           }
         } catch (e) {
           console.error("Firebase sync error", e);
+          const errMessage = e instanceof Error ? e.message : String(e);
+          if (errMessage.includes('ERR_BLOCKED_BY_CLIENT')) {
+            console.warn('Disabling Firestore sync because requests are blocked by client.');
+            setIsFirebaseEnabled(false);
+          }
         }
       }, 1000);
 
       return () => clearTimeout(timeout);
     }
-  }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading]);
+  }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading, isFirebaseEnabled]);
 
   // Persist local-only map coordinates (non-sensitive)
   useEffect(() => {
@@ -385,7 +396,9 @@ export default function App() {
   };
 
   const handleCameraUnavailable = useCallback(async () => {
-    const message = cameraError || t('camera_unavail', currentLanguage);
+    const message = cameraError
+      ? `Camera error: ${cameraError}`
+      : (t('camera_not_ready', currentLanguage) || 'Camera is warming up, please try again.');
     setStatus(message);
     await speak(message);
     setTimeout(() => setCurrentPage('home'), 1000);

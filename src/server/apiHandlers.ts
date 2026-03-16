@@ -26,9 +26,34 @@ type WhatsAppRequestBody = {
 };
 
 type TtsVendorAttempt = {
+  name: string;
   url: string;
   headers: Record<string, string>;
+  payload: Record<string, unknown>;
 };
+
+type TtsVendorResponse = {
+  audios?: string[];
+  audio?: string;
+  data?: {
+    audios?: string[];
+    audio?: string;
+  };
+};
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Unknown error.';
+}
+
+function getRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 export function getHealthStatus() {
   return {
@@ -45,15 +70,17 @@ export function getHealthStatus() {
 }
 
 export async function handleVisionRequest(body: VisionRequestBody): Promise<JsonResult> {
+  const requestId = getRequestId();
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return { status: 401, body: { error: 'Vision API key invalid or missing.' } };
+      console.error(`[Vision:${requestId}] GEMINI_API_KEY missing.`);
+      return { status: 500, body: { error: 'Vision service is not configured.', code: 'VISION_CONFIG_MISSING' } };
     }
 
     const { image, prompt } = body;
     if (!image || !prompt) {
-      return { status: 400, body: { error: 'Image and prompt are required.' } };
+      return { status: 400, body: { error: 'Image and prompt are required.', code: 'VISION_BAD_REQUEST' } };
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -75,12 +102,13 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       },
     });
 
+    const text = response.text?.trim();
     return {
       status: 200,
-      body: { text: response.text || "I couldn't analyze the scene." },
+      body: { text: text || "I couldn't analyze the scene." },
     };
   } catch (error: unknown) {
-    console.error('Gemini API Error:', error);
+    console.error(`[Vision:${requestId}] Gemini API Error:`, error);
     const err = error as { status?: number; message?: string };
     if (
       err.status === 401 ||
@@ -93,11 +121,13 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
         body: {
           error: 'Vision API key invalid or missing.',
           details: err.message || 'Gemini rejected the request credentials.',
+          code: 'VISION_AUTH_ERROR',
+          requestId,
         },
       };
     }
     if (err.status === 429 || err.message?.includes('429')) {
-      return { status: 429, body: { error: 'Vision service rate limit exceeded.' } };
+      return { status: 429, body: { error: 'Vision service rate limit exceeded.', code: 'VISION_RATE_LIMIT', requestId } };
     }
 
     return {
@@ -105,27 +135,37 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       body: {
         error: 'Vision service temporarily unavailable.',
         details: err.message || 'Unknown vision error.',
+        code: 'VISION_UPSTREAM_ERROR',
+        requestId,
       },
     };
   }
 }
 
 export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult> {
+  const requestId = getRequestId();
   try {
     const apiKey = process.env.SARVAM_API_KEY;
     const { text, language, targetLanguageCode } = body;
     const resolvedLanguage = targetLanguageCode || language || 'en-IN';
 
     if (!text?.trim()) {
-      return { status: 400, body: { error: 'Text is required.' } };
+      return { status: 400, body: { error: 'Text is required.', code: 'TTS_BAD_REQUEST' } };
     }
 
     if (!apiKey) {
-      return { status: 501, body: { error: 'SARVAM_API_KEY is missing. Use browser TTS fallback.' } };
+      console.error(`[TTS:${requestId}] SARVAM_API_KEY missing.`);
+      return {
+        status: 500,
+        body: {
+          error: 'TTS service is not configured.',
+          code: 'TTS_CONFIG_MISSING',
+        },
+      };
     }
 
-    const payload = {
-      inputs: [text],
+    const payloadV1 = {
+      text,
       target_language_code: resolvedLanguage,
       speaker: 'meera',
       pitch: 0,
@@ -136,20 +176,29 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
       model: 'bulbul:v1',
     };
 
+    const payloadV2 = {
+      inputs: [text],
+      ...payloadV1,
+    };
+
     const attempts: TtsVendorAttempt[] = [
       {
+        name: 'bearer-v1',
         url: 'https://api.sarvam.ai/v1/text-to-speech',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
+        payload: payloadV1,
       },
       {
+        name: 'legacy-subscription',
         url: 'https://api.sarvam.ai/text-to-speech',
         headers: {
           'Content-Type': 'application/json',
           'api-subscription-key': apiKey,
         },
+        payload: payloadV2,
       },
     ];
 
@@ -160,39 +209,45 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
       const response = await fetch(attempt.url, {
         method: 'POST',
         headers: attempt.headers,
-        body: JSON.stringify(payload),
+        body: JSON.stringify(attempt.payload),
       });
 
       if (!response.ok) {
         lastStatus = response.status;
         lastError = await response.text();
-        console.error(`Sarvam API Error (${attempt.url}):`, lastError);
+        console.error(`[TTS:${requestId}] Sarvam API Error (${attempt.name} ${attempt.url}):`, lastError);
         continue;
       }
 
-      const data = (await response.json()) as { audios?: string[] };
-      const audio = data.audios?.[0];
+      const data = (await response.json()) as TtsVendorResponse;
+      const audio = data.audio || data.audios?.[0] || data.data?.audio || data.data?.audios?.[0];
       if (!audio) {
         lastStatus = 502;
         lastError = 'No audio returned from vendor.';
+        console.error(`[TTS:${requestId}] Sarvam response had no audio field.`, data);
         continue;
       }
 
       return {
         status: 200,
-        body: { audio, audioBase64: audio },
+        body: { audio, audioBase64: audio.replace(/^data:audio\/[a-zA-Z0-9.+-]+;base64,/, '') },
       };
     }
 
-    return { status: lastStatus, body: { error: 'TTS service error.', details: lastError } };
+    return {
+      status: lastStatus,
+      body: { error: 'TTS service error.', details: lastError, code: 'TTS_UPSTREAM_ERROR', requestId },
+    };
   } catch (error: unknown) {
-    console.error('TTS Proxy Error:', error);
-    const err = error as { message?: string };
+    const message = getErrorMessage(error);
+    console.error(`[TTS:${requestId}] TTS Proxy Error:`, error);
     return {
       status: 500,
       body: {
         error: 'TTS service temporarily unavailable.',
-        details: err.message || 'Unknown TTS error.',
+        details: message,
+        code: 'TTS_INTERNAL_ERROR',
+        requestId,
       },
     };
   }
