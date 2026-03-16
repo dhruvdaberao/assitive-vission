@@ -1,0 +1,11 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/((?!api/|manifest.json|favicon.ico|icon.svg|eye-padded.png|assets/|images/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
