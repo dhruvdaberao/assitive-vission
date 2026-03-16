@@ -10,5 +10,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+const hasFirebaseConfig = Object.values(firebaseConfig).every(Boolean);
+
+let db = null;
+
+if (hasFirebaseConfig) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+  } catch (error) {
+    console.warn("Firebase initialization skipped:", error);
+  }
+} else {
+  console.warn("Firebase configuration missing. Continuing without Firestore.");
+}
+
+export { db, hasFirebaseConfig };

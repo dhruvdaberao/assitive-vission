@@ -30,6 +30,20 @@ type TtsVendorAttempt = {
   headers: Record<string, string>;
 };
 
+export function getHealthStatus() {
+  return {
+    status: 'ok',
+    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
+    config: {
+      gemini: Boolean(process.env.GEMINI_API_KEY),
+      sarvam: Boolean(process.env.SARVAM_API_KEY),
+      twilioSid: Boolean(process.env.TWILIO_ACCOUNT_SID),
+      twilioAuth: Boolean(process.env.TWILIO_AUTH_TOKEN),
+      twilioSender: Boolean(process.env.TWILIO_WHATSAPP_NUMBER),
+    },
+  };
+}
+
 export async function handleVisionRequest(body: VisionRequestBody): Promise<JsonResult> {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -68,6 +82,20 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
   } catch (error: unknown) {
     console.error('Gemini API Error:', error);
     const err = error as { status?: number; message?: string };
+    if (
+      err.status === 401 ||
+      err.status === 403 ||
+      err.message?.toLowerCase().includes('api key') ||
+      err.message?.toLowerCase().includes('permission')
+    ) {
+      return {
+        status: 401,
+        body: {
+          error: 'Vision API key invalid or missing.',
+          details: err.message || 'Gemini rejected the request credentials.',
+        },
+      };
+    }
     if (err.status === 429 || err.message?.includes('429')) {
       return { status: 429, body: { error: 'Vision service rate limit exceeded.' } };
     }

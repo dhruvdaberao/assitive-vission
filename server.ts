@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import {
+  getHealthStatus,
   handleTtsRequest,
   handleVisionRequest,
   handleWhatsAppRequest,
@@ -16,7 +17,7 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.json(getHealthStatus());
   });
 
   app.post('/api/vision', async (req, res) => {

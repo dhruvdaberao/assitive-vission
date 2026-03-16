@@ -126,6 +126,11 @@ export default function App() {
   // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
   useEffect(() => {
     const initializeApp = async () => {
+      if (!db) {
+        setIsAppLoading(false);
+        return;
+      }
+
       try {
         let uid = localStorage.getItem('echo_user_id');
         if (!uid) {
@@ -186,7 +191,7 @@ export default function App() {
 
   // Persist Notify & App Details to Firebase (Debounced)
   useEffect(() => {
-    if (!isAppLoading) {
+    if (!isAppLoading && db) {
       const timeout = setTimeout(async () => {
         try {
           const uid = localStorage.getItem('echo_user_id');
