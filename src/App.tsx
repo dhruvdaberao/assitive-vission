@@ -398,17 +398,15 @@ export default function App() {
   const handleCameraUnavailable = useCallback(async () => {
     const message = cameraError
       ? `Camera error: ${cameraError}`
-      : (t('camera_not_ready', currentLanguage) || 'Camera is warming up, please try again.');
+      : (t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.');
     setStatus(message);
     await speak(message);
-    setTimeout(() => setCurrentPage('home'), 1000);
   }, [cameraError, currentLanguage, speak]);
 
   const handleCaptureUnavailable = useCallback(async () => {
-    const message = t('camera_not_ready', currentLanguage) || 'Camera is warming up, please try again.';
+    const message = t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.';
     setStatus(message);
     await speak(message);
-    setTimeout(() => setCurrentPage('home'), 1500);
   }, [currentLanguage, speak]);
 
   const handleDescribeScene = async () => {
@@ -445,7 +443,7 @@ export default function App() {
         setStatus(message);
         await speak(message);
       } else {
-        const message = t('service_unavail', currentLanguage);
+        const message = e?.message || t('service_unavail', currentLanguage);
         setStatus(message);
         await speak(message);
       }
@@ -488,7 +486,7 @@ export default function App() {
         setStatus(message);
         await speak(message);
       } else {
-        const message = t('service_unavail', currentLanguage);
+        const message = e?.message || t('service_unavail', currentLanguage);
         setStatus(message);
         await speak(message);
       }
@@ -531,7 +529,7 @@ export default function App() {
         setStatus(message);
         await speak(message);
       } else {
-        const message = t('service_unavail', currentLanguage);
+        const message = e?.message || t('service_unavail', currentLanguage);
         setStatus(message);
         await speak(message);
       }

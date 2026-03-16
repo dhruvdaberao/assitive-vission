@@ -16,6 +16,11 @@ type VisionRequestBody = {
   prompt?: string;
 };
 
+type ParsedImage = {
+  data: string;
+  mimeType: string;
+};
+
 type WhatsAppRequestBody = {
   type?: 'reached' | 'left';
   userName?: string;
@@ -33,8 +38,9 @@ type TtsVendorAttempt = {
 };
 
 type TtsVendorResponse = {
-  audios?: string[];
+  audios?: Array<string | { audio?: string; audio_base64?: string }>;
   audio?: string;
+  outputs?: Array<{ audio?: string; audio_base64?: string }>;
   data?: {
     audios?: string[];
     audio?: string;
@@ -53,6 +59,30 @@ function getErrorMessage(error: unknown): string {
 
 function getRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseImagePayload(image: string): ParsedImage | null {
+  const trimmed = image.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dataUrlMatch = trimmed.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    return { mimeType: dataUrlMatch[1], data: dataUrlMatch[2] };
+  }
+
+  return { mimeType: 'image/jpeg', data: trimmed };
 }
 
 export function getHealthStatus() {
@@ -75,11 +105,12 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error(`[Vision:${requestId}] GEMINI_API_KEY missing.`);
-      return { status: 500, body: { error: 'Vision service is not configured.', code: 'VISION_CONFIG_MISSING' } };
+      return { status: 503, body: { error: 'Vision service is not configured.', code: 'VISION_CONFIG_MISSING' } };
     }
 
     const { image, prompt } = body;
-    if (!image || !prompt) {
+    const parsedImage = typeof image === 'string' ? parseImagePayload(image) : null;
+    if (!parsedImage || !prompt?.trim()) {
       return { status: 400, body: { error: 'Image and prompt are required.', code: 'VISION_BAD_REQUEST' } };
     }
 
@@ -89,11 +120,11 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       contents: [
         {
           inlineData: {
-            data: image,
-            mimeType: 'image/jpeg',
+            data: parsedImage.data,
+            mimeType: parsedImage.mimeType,
           },
         },
-        prompt,
+        prompt.trim(),
       ],
       config: {
         systemInstruction:
@@ -156,7 +187,7 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
     if (!apiKey) {
       console.error(`[TTS:${requestId}] SARVAM_API_KEY missing.`);
       return {
-        status: 500,
+        status: 503,
         body: {
           error: 'TTS service is not configured.',
           code: 'TTS_CONFIG_MISSING',
@@ -206,11 +237,11 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
     let lastError = 'TTS service error.';
 
     for (const attempt of attempts) {
-      const response = await fetch(attempt.url, {
+      const response = await fetchWithTimeout(attempt.url, {
         method: 'POST',
         headers: attempt.headers,
         body: JSON.stringify(attempt.payload),
-      });
+      }, 20000);
 
       if (!response.ok) {
         lastStatus = response.status;
@@ -220,7 +251,14 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
       }
 
       const data = (await response.json()) as TtsVendorResponse;
-      const audio = data.audio || data.audios?.[0] || data.data?.audio || data.data?.audios?.[0];
+      const firstAudio = Array.isArray(data.audios) ? data.audios[0] : undefined;
+      const audio =
+        data.audio ||
+        (typeof firstAudio === 'string' ? firstAudio : firstAudio?.audio || firstAudio?.audio_base64) ||
+        data.data?.audio ||
+        data.data?.audios?.[0] ||
+        data.outputs?.[0]?.audio ||
+        data.outputs?.[0]?.audio_base64;
       if (!audio) {
         lastStatus = 502;
         lastError = 'No audio returned from vendor.';
@@ -241,12 +279,13 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
   } catch (error: unknown) {
     const message = getErrorMessage(error);
     console.error(`[TTS:${requestId}] TTS Proxy Error:`, error);
+    const isTimeout = error instanceof Error && error.name === 'AbortError';
     return {
-      status: 500,
+      status: isTimeout ? 504 : 500,
       body: {
-        error: 'TTS service temporarily unavailable.',
+        error: isTimeout ? 'TTS service timed out.' : 'TTS service temporarily unavailable.',
         details: message,
-        code: 'TTS_INTERNAL_ERROR',
+        code: isTimeout ? 'TTS_TIMEOUT' : 'TTS_INTERNAL_ERROR',
         requestId,
       },
     };
