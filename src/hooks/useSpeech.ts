@@ -176,12 +176,22 @@ export function useSpeech() {
       });
 
       if (!response.ok) {
-        const errorBody = (await response.json().catch(() => ({}))) as { error?: string; details?: string };
+        const errorBody = (await response.json().catch(() => ({}))) as { error?: string; details?: string; code?: string; requestId?: string };
         console.warn('TTS API returned non-OK response:', response.status, errorBody);
+
+        if (errorBody.requestId) {
+          console.warn(`TTS server requestId: ${errorBody.requestId}`);
+        }
+
         if (response.status === 402 || response.status === 403 || response.status === 429) {
           console.warn('TTS quota exhausted, using browser speech fallback.');
         }
-        throw new Error(`TTS proxy failed with status ${response.status}`);
+
+        if (response.status === 503 && errorBody.code === 'TTS_CONFIG_MISSING') {
+          throw new Error('TTS service is not configured on server.');
+        }
+
+        throw new Error(errorBody.details || errorBody.error || `TTS proxy failed with status ${response.status}`);
       }
 
       const data = (await response.json()) as { audio?: string; audioBase64?: string };

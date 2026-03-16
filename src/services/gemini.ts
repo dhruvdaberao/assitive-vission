@@ -30,7 +30,7 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
           return 'Unable to process the captured image. Please try again.';
         }
 
-        if (response.status === 500 && errorData.code === 'VISION_CONFIG_MISSING') {
+        if ((response.status === 500 || response.status === 503) && errorData.code === 'VISION_CONFIG_MISSING') {
           return 'Vision service is not configured on the server.';
         }
 
@@ -51,7 +51,7 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
           console.error(`Vision server requestId: ${errorData.requestId}`);
         }
 
-        throw new Error(serverError);
+        throw new Error(errorData.details || serverError);
       }
 
       return (data as { text?: string }).text || "I couldn't analyze the scene.";

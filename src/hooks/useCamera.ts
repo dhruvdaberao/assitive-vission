@@ -1,6 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const CAMERA_READY_TIMEOUT_MS = 4000;
+const CAMERA_READY_TIMEOUT_MS = 8000;
+
+function mapCameraError(error: unknown): string {
+  if (error && typeof error === 'object' && 'name' in error) {
+    const name = String((error as { name?: string }).name || '');
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Camera permission denied. Please allow camera access in browser settings.';
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      return 'No camera device was found on this device.';
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+      return 'Camera is currently in use by another app. Close other camera apps and retry.';
+    }
+    if (name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError') {
+      return 'Requested camera mode is unavailable. Falling back to default camera.';
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Failed to access camera.';
+}
 
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -11,6 +35,7 @@ export function useCamera() {
   useEffect(() => {
     let cancelled = false;
     let activeStream: MediaStream | null = null;
+    let warmupTimeout: number | null = null;
 
     const stopStream = (mediaStream: MediaStream | null) => {
       mediaStream?.getTracks().forEach((track) => track.stop());
@@ -31,20 +56,28 @@ export function useCamera() {
           return;
         }
 
-        let ready = false;
+        let settled = false;
+
         const cleanupListeners = () => {
-          video.removeEventListener('loadedmetadata', markReady);
-          video.removeEventListener('loadeddata', markReady);
-          video.removeEventListener('canplay', markReady);
-          window.clearTimeout(timeoutId);
+          video.removeEventListener('loadedmetadata', handleMediaReady);
+          video.removeEventListener('loadeddata', handleMediaReady);
+          video.removeEventListener('canplay', handleMediaReady);
+          if (warmupTimeout !== null) {
+            window.clearTimeout(warmupTimeout);
+            warmupTimeout = null;
+          }
         };
 
-        const markReady = async () => {
-          if (cancelled || ready || video.videoWidth === 0 || video.videoHeight === 0) {
+        const handleMediaReady = async () => {
+          if (cancelled || settled) {
             return;
           }
 
-          ready = true;
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            return;
+          }
+
+          settled = true;
           cleanupListeners();
 
           try {
@@ -59,8 +92,16 @@ export function useCamera() {
           }
         };
 
-        const timeoutId = window.setTimeout(() => {
-          if (cancelled || ready) {
+        warmupTimeout = window.setTimeout(() => {
+          if (cancelled || settled) {
+            return;
+          }
+
+          const hasTrack = mediaStream.getVideoTracks().some((track) => track.readyState === 'live');
+          const hasVideoSize = video.videoWidth > 0 && video.videoHeight > 0;
+
+          if (hasTrack && hasVideoSize) {
+            void handleMediaReady();
             return;
           }
 
@@ -71,12 +112,17 @@ export function useCamera() {
         video.muted = true;
         video.playsInline = true;
         video.srcObject = mediaStream;
-        video.addEventListener('loadedmetadata', markReady);
-        video.addEventListener('loadeddata', markReady);
-        video.addEventListener('canplay', markReady);
-        void video.play().catch(() => {
-          // Some browsers reject the first play() call until metadata exists.
-        });
+        video.addEventListener('loadedmetadata', handleMediaReady);
+        video.addEventListener('loadeddata', handleMediaReady);
+        video.addEventListener('canplay', handleMediaReady);
+
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+          void handleMediaReady();
+        } else {
+          void video.play().catch(() => {
+            // Some browsers reject the first play() call until metadata exists.
+          });
+        }
       };
 
       attachWhenVideoReady();
@@ -93,23 +139,31 @@ export function useCamera() {
 
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
         });
+
         if (!cancelled) {
           attachStream(mediaStream);
         } else {
           stopStream(mediaStream);
         }
-      } catch {
+      } catch (error) {
+        console.warn('Primary camera constraints failed, retrying with fallback constraints.', error);
+
         try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           if (!cancelled) {
             attachStream(fallbackStream);
           } else {
             stopStream(fallbackStream);
           }
         } catch (fallbackError: unknown) {
-          const message = fallbackError instanceof Error ? fallbackError.message : 'Failed to access camera';
+          const message = mapCameraError(fallbackError);
           setError(message);
           setIsReady(false);
           setStream(null);
@@ -121,6 +175,9 @@ export function useCamera() {
 
     return () => {
       cancelled = true;
+      if (warmupTimeout !== null) {
+        window.clearTimeout(warmupTimeout);
+      }
       stopStream(activeStream);
       if (videoRef.current) {
         videoRef.current.srcObject = null;
@@ -134,11 +191,7 @@ export function useCamera() {
       return null;
     }
 
-    if (
-      video.videoWidth === 0 ||
-      video.videoHeight === 0 ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-    ) {
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
       console.warn('captureImage skipped: video stream is not fully ready.');
       return null;
     }
