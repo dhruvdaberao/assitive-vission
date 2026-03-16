@@ -59,14 +59,9 @@ export function useSpeech() {
     }
   }, [updateState]);
 
-  const speak = useCallback(async (text: string): Promise<void> => {
-    stopListening();
-    updateState('SPEAKING');
-    window.speechSynthesis.cancel();
-    
+  const speakWebSpeech = useCallback((text: string, currentLang: string): Promise<void> => {
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text);
-      const currentLang = localStorage.getItem('appLanguage') || 'English';
       utterance.lang = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
       utterance.rate = 0.9;
       
@@ -81,7 +76,64 @@ export function useSpeech() {
       
       window.speechSynthesis.speak(utterance);
     });
-  }, [stopListening, updateState]);
+  }, [updateState]);
+
+  const speak = useCallback(async (text: string): Promise<void> => {
+    stopListening();
+    updateState('SPEAKING');
+    window.speechSynthesis.cancel();
+    
+    const currentLang = localStorage.getItem('appLanguage') || 'English';
+    const langCode = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
+
+    try {
+      // 1. Try hitting the TTS proxy
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: langCode })
+      });
+
+      if (!res.ok) {
+        throw new Error('TTS Proxy failed or returned ' + res.status);
+      }
+
+      const data = await res.json();
+      if (!data.audio) {
+        throw new Error('No audio returned from API');
+      }
+
+      // Convert base64 to array buffer
+      const binaryString = window.atob(data.audio);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Play audio buffer
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+
+      await new Promise<void>(resolve => {
+        source.onended = () => {
+          if (stateRef.current === 'SPEAKING') updateState('IDLE');
+          resolve();
+        };
+        // Failsafe timeout in case onended doesn't fire
+        setTimeout(resolve, (audioBuffer.duration * 1000) + 500);
+      });
+
+    } catch (e) {
+      console.warn("Backend TTS Failed, falling back to experimental web speech:", e);
+      // 2. Fallback to Web Speech API
+      await speakWebSpeech(text, currentLang);
+    }
+  }, [stopListening, updateState, speakWebSpeech]);
 
   const listen = useCallback((): Promise<string> => {
     return new Promise(async (resolve, reject) => {

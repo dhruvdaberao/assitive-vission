@@ -25,6 +25,8 @@ export function useCamera() {
         } catch (fallbackErr: unknown) {
           const errorMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to access camera';
           setError(errorMsg);
+          setIsReady(false);
+          setStream(null);
         }
       }
     }

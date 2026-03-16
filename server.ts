@@ -59,6 +59,59 @@ async function startServer() {
     }
   });
 
+  app.post("/api/tts", async (req, res) => {
+    try {
+      const { text, language } = req.body;
+      const apiKey = process.env.SARVAM_API_KEY;
+
+      if (!text) {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      if (!apiKey) {
+        // Safe fallback when no key is present instead of crashing the backend
+        return res.status(501).json({ error: "SARVAM_API_KEY is missing, use browser native TTS" });
+      }
+
+      // Try fetching from Sarvam AI if a key exists
+      const sarvamResponse = await fetch("https://api.sarvam.ai/v1/text-to-speech", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          inputs: [text],
+          target_language_code: language || "en-IN",
+          speaker: "meera",
+          pitch: 0,
+          pace: 1.0,
+          loudness: 1.5,
+          speech_sample_rate: 8000,
+          enable_preprocessing: true,
+          model: "bulbul:v1"
+        }),
+      });
+
+      if (!sarvamResponse.ok) {
+        const errText = await sarvamResponse.text();
+        console.error("Sarvam API error:", errText);
+        return res.status(sarvamResponse.status).json({ error: "TTS generation failed on vendor side" });
+      }
+
+      const data = await sarvamResponse.json();
+      if (data.audios && data.audios[0]) {
+        // Send base64 back
+        return res.json({ audio: data.audios[0] });
+      } else {
+        return res.status(500).json({ error: "No audio returned from vendor" });
+      }
+    } catch (error) {
+      console.error("TTS Proxy Error:", error);
+      res.status(500).json({ error: "Internal TTS proxy failure" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
