@@ -161,8 +161,12 @@ export default function App() {
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        setStatus("Failed to capture image.");
+        speak("Failed to capture image.");
       }
     } catch (e) {
+      setStatus("Service unavailable.");
       speak("Service unavailable.");
     } finally {
       setProcessing(false);
@@ -180,8 +184,12 @@ export default function App() {
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        setStatus("Failed to capture image.");
+        speak("Failed to capture image.");
       }
     } catch (e) {
+      setStatus("Service unavailable.");
       speak("Service unavailable.");
     } finally {
       setProcessing(false);
@@ -199,8 +207,12 @@ export default function App() {
         setStatus(response);
         await speak(response);
         setTimeout(() => setCurrentPage('home'), 1000);
+      } else {
+        setStatus("Failed to capture image.");
+        speak("Failed to capture image.");
       }
     } catch (e) {
+      setStatus("Service unavailable.");
       speak("Service unavailable.");
     } finally {
       setProcessing(false);
@@ -242,7 +254,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
-      <video ref={videoRef} className="hidden" playsInline muted />
+      <video ref={videoRef} className="sr-only pointer-events-none" playsInline autoPlay muted />
 
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (
