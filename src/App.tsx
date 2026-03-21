@@ -8,7 +8,7 @@ import { useCamera } from './hooks/useCamera';
 import { useSpeech, useAccessibleButton, parseSpokenNumber, LANGUAGE_CONFIG } from './hooks/useSpeech';
 // In a production app, this would call our custom backend, not Gemini directly.
 import { analyzeScene } from './services/gemini';
-import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2, Info, HelpCircle } from 'lucide-react';
+import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shield, HeartPulse, PhoneCall, Save, Edit2, Bell, QrCode, Trash2, Info, HelpCircle, RefreshCw, RotateCcw, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { QRCodeSVG } from 'qrcode.react';
@@ -82,7 +82,21 @@ const BannerCarousel = () => {
 };
 
 export default function App() {
-  const { videoRef, isReady: cameraReady, error: cameraError, captureImage, stream } = useCamera();
+  const {
+    videoRef,
+    isReady: cameraReady,
+    isRequesting: cameraRequesting,
+    stage: cameraStage,
+    issue: cameraIssue,
+    error: cameraError,
+    captureImage,
+    stream,
+    retryCamera,
+    switchCamera,
+    canSwitchCamera,
+    permissionState: cameraPermissionState,
+    diagnostics: cameraDiagnostics,
+  } = useCamera();
   const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
 
   const [currentLanguage, setCurrentLanguage] = useState(() => localStorage.getItem('appLanguage') || 'English');
@@ -123,6 +137,8 @@ export default function App() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [isLocationSaved, setIsLocationSaved] = useState(false);
   const [isFirebaseEnabled, setIsFirebaseEnabled] = useState(Boolean(db));
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const isCameraFeaturePage = ['navigate', 'find', 'describe', 'currency'].includes(currentPage);
 
   // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
   useEffect(() => {
@@ -396,18 +412,74 @@ export default function App() {
   };
 
   const handleCameraUnavailable = useCallback(async () => {
-    const message = cameraError
-      ? `Camera error: ${cameraError}`
-      : (t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.');
+    const message = cameraIssue?.title
+      ? `${cameraIssue.title}. ${cameraIssue.message}`
+      : cameraRequesting
+        ? 'Camera is starting. Please wait a moment.'
+        : (t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.');
     setStatus(message);
     await speak(message);
-  }, [cameraError, currentLanguage, speak]);
+  }, [cameraIssue, cameraRequesting, currentLanguage, speak]);
 
   const handleCaptureUnavailable = useCallback(async () => {
-    const message = t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.';
+    const message = cameraIssue?.message || t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.';
     setStatus(message);
     await speak(message);
+  }, [cameraIssue, currentLanguage, speak]);
+
+  const analyzeProvidedImage = useCallback(async (image: string, prompt: string) => {
+    setProcessing(true);
+    setStatus(t('status_analyzing', currentLanguage));
+    try {
+      const response = await analyzeScene(image, prompt);
+      const normalizedResponse =
+        response === "TOKENS_FINISHED"
+          ? t('tokens_finished', currentLanguage)
+          : response === "SYSTEM_BUSY"
+            ? (t('system_busy', currentLanguage) || "System is busy. Please wait.")
+            : response;
+      setStatus(normalizedResponse);
+      await speak(normalizedResponse);
+    } catch (error: any) {
+      const message = error?.message || t('service_unavail', currentLanguage);
+      setStatus(message);
+      await speak(message);
+    } finally {
+      setProcessing(false);
+    }
   }, [currentLanguage, speak]);
+
+  const handleUploadFallback = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const image = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('Unable to read selected image.'));
+      reader.readAsDataURL(file);
+    }).catch(async (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unable to read selected image.';
+      setStatus(message);
+      await speak(message);
+      return null;
+    });
+
+    event.target.value = '';
+    if (!image) return;
+
+    if (currentPage === 'describe') {
+      await analyzeProvidedImage(image, `Describe the surroundings concisely for a blind person. Mention any immediate obstacles or people. Keep it under 3 sentences. Reply ONLY in the ${currentLanguage} language.`);
+    } else if (currentPage === 'currency') {
+      await analyzeProvidedImage(image, `Identify the Indian currency note in this image. State only the denomination. If unclear, say 'Currency not clear. Please hold steady.'. Reply ONLY in the ${currentLanguage} language.`);
+    } else if (currentPage === 'find') {
+      const objectLabel = targetObject || 'target object';
+      await analyzeProvidedImage(image, `Find the ${objectLabel} in this image. Tell me where it is (left, right, center) and approximate distance. Provide hand guidance like 'Move hand right'. If not found, say so. Keep it very short. Reply ONLY in the ${currentLanguage} language.`);
+    } else if (currentPage === 'navigate') {
+      const destinationLabel = destination || 'the destination';
+      await analyzeProvidedImage(image, `The user wants to navigate to: ${destinationLabel}. Describe the immediate path forward, identifying any obstacles, doors, or turns. Keep it under 2 sentences. Reply ONLY in the ${currentLanguage} language.`);
+    }
+  }, [analyzeProvidedImage, currentLanguage, currentPage, destination, speak, targetObject]);
 
   const handleDescribeScene = async () => {
     if (!cameraReady) {
@@ -613,15 +685,15 @@ export default function App() {
   );
 
   // Permissions State Hook
-  const [sysPermissions, setSysPermissions] = useState({ camera: 'prompt', mic: 'prompt', location: 'prompt' });
+  const [sysPermissions, setSysPermissions] = useState<{ camera: PermissionState | 'unsupported'; mic: PermissionState | 'unsupported'; location: PermissionState | 'unsupported' }>({ camera: 'prompt', mic: 'prompt', location: 'prompt' });
 
   useEffect(() => {
     if (currentPage === 'permissions') {
       const checkPermissions = async () => {
         try {
-          const cam = await navigator.permissions.query({ name: 'camera' as PermissionName }).then(res => res.state).catch(() => 'prompt');
-          const mic = await navigator.permissions.query({ name: 'microphone' as PermissionName }).then(res => res.state).catch(() => 'prompt');
-          const loc = await navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(res => res.state).catch(() => 'prompt');
+          const cam = navigator.permissions?.query ? await navigator.permissions.query({ name: 'camera' as PermissionName }).then(res => res.state).catch(() => 'unsupported') : 'unsupported';
+          const mic = navigator.permissions?.query ? await navigator.permissions.query({ name: 'microphone' as PermissionName }).then(res => res.state).catch(() => 'unsupported') : 'unsupported';
+          const loc = navigator.permissions?.query ? await navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(res => res.state).catch(() => 'unsupported') : 'unsupported';
           setSysPermissions({ camera: cam, mic, location: loc });
         } catch { } // If browser blocks query, fail silently and keep as prompt
       };
@@ -635,7 +707,7 @@ export default function App() {
   const handleRequestSysPermission = async (type: string) => {
     try {
       if (type === 'camera') {
-        await navigator.mediaDevices.getUserMedia({ video: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
+        await retryCamera();
       } else if (type === 'microphone') {
         await navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => stream.getTracks().forEach(t => t.stop()));
       } else if (type === 'geolocation') {
@@ -661,24 +733,28 @@ export default function App() {
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
       <video ref={videoRef} className="fixed top-[-2000px] left-[-2000px] w-10 h-10 pointer-events-none" autoPlay playsInline muted />
+      <input ref={uploadInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUploadFallback} />
 
       <AnimatePresence mode="wait">
         {currentPage === 'home' && (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
             {renderHeader(t('app_title', currentLanguage) || 'EchoSight', false)}
 
-            {(status !== t('status_ready', currentLanguage) || cameraError) && (
+            {(status !== t('status_ready', currentLanguage) || cameraError || cameraRequesting) && (
               <div className="flex-none px-4 pt-4 flex flex-col items-center justify-center">
                 {status !== t('status_ready', currentLanguage) && (
                   <div className="bg-blue-50 text-blue-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
                     <p className="text-lg font-semibold">{status}</p>
                   </div>
                 )}
-                {cameraError && (
-                  <div className="bg-red-50 text-red-900 px-6 py-4 rounded-2xl w-full max-w-sm text-center shadow-sm mb-2">
-                    <p className="text-sm font-semibold">Camera Error: {cameraError}</p>
-                  </div>
-                )}
+                <CameraStatusCard
+                  visible={cameraRequesting || !!cameraIssue}
+                  issue={cameraIssue}
+                  stage={cameraStage}
+                  onRetry={() => void retryCamera()}
+                  onSwitchCamera={canSwitchCamera ? () => void switchCamera() : undefined}
+                  onUploadFallback={isCameraFeaturePage ? () => uploadInputRef.current?.click() : undefined}
+                />
               </div>
             )}
 
@@ -706,6 +782,13 @@ export default function App() {
             {renderHeader(t('btn_navigate', currentLanguage) || 'Live Navigation')}
             <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
+              <CameraOverlayActions
+                show={cameraRequesting || !!cameraIssue}
+                issue={cameraIssue}
+                onRetry={() => void retryCamera()}
+                onSwitchCamera={canSwitchCamera ? () => void switchCamera() : undefined}
+                onUploadFallback={() => uploadInputRef.current?.click()}
+              />
               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
                 {destination ? `Navigating to: ${destination}` : "Listening..."}
                 <br />
@@ -720,6 +803,13 @@ export default function App() {
             {renderHeader('Find Object')}
             <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
+              <CameraOverlayActions
+                show={cameraRequesting || !!cameraIssue}
+                issue={cameraIssue}
+                onRetry={() => void retryCamera()}
+                onSwitchCamera={canSwitchCamera ? () => void switchCamera() : undefined}
+                onUploadFallback={() => uploadInputRef.current?.click()}
+              />
               <div className="absolute bottom-10 w-full text-center text-white text-2xl font-bold drop-shadow-lg px-4">
                 {targetObject ? `Finding: ${targetObject}` : "Listening..."}
                 <br />
@@ -734,6 +824,13 @@ export default function App() {
             {renderHeader(currentPage === 'describe' ? 'Describe Scene' : 'Identify Currency')}
             <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
+              <CameraOverlayActions
+                show={cameraRequesting || !!cameraIssue}
+                issue={cameraIssue}
+                onRetry={() => void retryCamera()}
+                onSwitchCamera={canSwitchCamera ? () => void switchCamera() : undefined}
+                onUploadFallback={() => uploadInputRef.current?.click()}
+              />
             </div>
             <div className={`p-6 border-t border-transparent min-h-[200px] flex flex-col items-center justify-center gap-6 ${cardClass}`}>
               <p className={`text-xl font-medium text-center leading-relaxed text-[#0D47A1] dark:text-[#E3F2FD]`}>{status}</p>
@@ -1020,8 +1117,10 @@ export default function App() {
                     <Eye className="text-blue-500" />
                     <span className="font-medium">{t('page_perm_camera', currentLanguage)}</span>
                   </div>
-                  {sysPermissions.camera === 'granted' ? (
+                  {sysPermissions.camera === 'granted' || cameraPermissionState === 'granted' ? (
                     <span className="text-green-500 text-sm font-bold bg-green-500/10 px-3 py-1 rounded-full">{t('page_perm_granted', currentLanguage)}</span>
+                  ) : sysPermissions.camera === 'unsupported' ? (
+                    <span className="text-amber-600 text-sm font-bold bg-amber-500/10 px-3 py-1 rounded-full">Prompt in browser</span>
                   ) : (
                     <button onClick={() => handleRequestSysPermission('camera')} className="text-blue-500 text-sm font-bold border border-blue-500 px-3 py-1 rounded-full hover:bg-blue-50">{t('page_perm_request', currentLanguage)}</button>
                   )}
@@ -1052,6 +1151,10 @@ export default function App() {
               <p className="text-sm mt-6 opacity-60 text-center">
                 {t('page_perm_footer', currentLanguage)}
               </p>
+              <div className={`mt-6 p-4 rounded-xl border text-sm ${cardClass}`}>
+                <p><strong>Camera status:</strong> {cameraIssue ? `${cameraIssue.title} — ${cameraIssue.message}` : cameraRequesting ? 'Starting camera…' : cameraReady ? 'Camera ready.' : 'Waiting for camera.'}</p>
+                <p className="mt-2 opacity-70">Permission API: {cameraPermissionState}. Secure context: {cameraDiagnostics.secureContext ? 'yes' : 'no'}. Stream active: {cameraDiagnostics.streamActive ? 'yes' : 'no'}.</p>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1134,6 +1237,79 @@ interface AccessibleButtonProps {
   key?: string;
 }
 
+function CameraStatusCard({
+  visible,
+  issue,
+  stage,
+  onRetry,
+  onSwitchCamera,
+  onUploadFallback,
+}: {
+  visible: boolean;
+  issue: { title: string; message: string; recoverable: boolean } | null;
+  stage: string;
+  onRetry: () => void;
+  onSwitchCamera?: () => void;
+  onUploadFallback?: () => void;
+}) {
+  if (!visible) return null;
+
+  const isStarting = stage === 'requesting';
+
+  return (
+    <div className={`px-6 py-4 rounded-2xl w-full max-w-md text-center shadow-sm mb-2 ${isStarting ? 'bg-amber-50 text-amber-900' : 'bg-red-50 text-red-900'}`}>
+      <p className="text-sm font-semibold">{isStarting ? 'Starting camera…' : issue?.title || 'Camera error'}</p>
+      <p className="text-sm mt-1 opacity-90">{isStarting ? 'Please wait while the preview connects.' : issue?.message}</p>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        <button onClick={onRetry} className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-bold hover:bg-white">
+          <RefreshCw size={14} />
+          Retry Camera
+        </button>
+        {onSwitchCamera && (
+          <button onClick={onSwitchCamera} className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-bold hover:bg-white">
+            <RotateCcw size={14} />
+            Switch Camera
+          </button>
+        )}
+        {onUploadFallback && (
+          <button onClick={onUploadFallback} className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-2 text-xs font-bold hover:bg-white">
+            <Upload size={14} />
+            Use Image
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CameraOverlayActions({
+  show,
+  issue,
+  onRetry,
+  onSwitchCamera,
+  onUploadFallback,
+}: {
+  show: boolean;
+  issue: { title: string; message: string } | null;
+  onRetry: () => void;
+  onSwitchCamera?: () => void;
+  onUploadFallback?: () => void;
+}) {
+  if (!show) return null;
+
+  return (
+    <div className="absolute inset-x-4 top-4 z-20 rounded-2xl bg-black/55 px-4 py-3 text-white shadow-lg backdrop-blur-sm">
+      <p className="text-sm font-semibold">{issue?.title || 'Connecting camera…'}</p>
+      <p className="mt-1 text-xs opacity-90">{issue?.message || 'Please keep this page open while the camera starts.'}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button onClick={onRetry} className="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold hover:bg-white/25">Retry</button>
+        {onSwitchCamera && <button onClick={onSwitchCamera} className="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold hover:bg-white/25">Switch Camera</button>}
+        {onUploadFallback && <button onClick={onUploadFallback} className="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold hover:bg-white/25">Use Image</button>}
+      </div>
+    </div>
+  );
+}
+
 function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "bg-white text-[#0D47A1] border-white shadow-md dark:bg-[#112240] dark:text-[#E3F2FD] dark:border-[#112240]" }: AccessibleButtonProps) {
   const handleTap = useAccessibleButton(label, onActivate, speak);
 
@@ -1164,6 +1340,12 @@ function VideoPreview({ stream, className }: { stream: MediaStream | null, class
   useEffect(() => {
     if (ref.current && stream) {
       ref.current.srcObject = stream;
+      ref.current.muted = true;
+      ref.current.defaultMuted = true;
+      ref.current.playsInline = true;
+      void ref.current.play().catch(() => {
+        // Mobile browsers can reject the first autoplay attempt until metadata is attached.
+      });
     }
   }, [stream]);
   return <video ref={ref} autoPlay playsInline muted className={`object-cover ${className}`} />;
