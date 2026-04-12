@@ -18,11 +18,20 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const serverError = (data as { error?: string; details?: string }).error || lastError;
+        const errorData = data as { error?: string; details?: string; code?: string; requestId?: string };
+        const serverError = errorData.error || lastError;
         lastError = serverError;
 
         if (response.status === 401) {
           return serverError;
+        }
+
+        if (response.status === 400) {
+          return 'Unable to process the captured image. Please try again.';
+        }
+
+        if ((response.status === 500 || response.status === 503) && errorData.code === 'VISION_CONFIG_MISSING') {
+          return 'Vision service is not configured on the server.';
         }
 
         if (response.status === 429) {
@@ -38,7 +47,11 @@ export async function analyzeScene(base64Image: string, prompt: string, retries 
           continue;
         }
 
-        throw new Error(serverError);
+        if (errorData.requestId) {
+          console.error(`Vision server requestId: ${errorData.requestId}`);
+        }
+
+        throw new Error(errorData.details || serverError);
       }
 
       return (data as { text?: string }).text || "I couldn't analyze the scene.";
