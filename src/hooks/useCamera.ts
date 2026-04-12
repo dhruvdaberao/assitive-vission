@@ -4,6 +4,7 @@ const CAMERA_READY_TIMEOUT_MS = 4000;
 
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -74,9 +75,6 @@ export function useCamera() {
         video.addEventListener('loadedmetadata', markReady);
         video.addEventListener('loadeddata', markReady);
         video.addEventListener('canplay', markReady);
-        void video.play().catch(() => {
-          // Some browsers reject the first play() call until metadata exists.
-        });
       };
 
       attachWhenVideoReady();
@@ -143,15 +141,36 @@ export function useCamera() {
       return null;
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Canvas Reuse
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement('canvas');
+    }
+    const canvas = canvasRef.current;
+
+    // Image Downscaling (max 1024px while maintaining aspect ratio)
+    let targetWidth = video.videoWidth;
+    let targetHeight = video.videoHeight;
+    const MAX_DIMENSION = 1024;
+
+    if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
+      if (targetWidth > targetHeight) {
+        targetHeight = (targetHeight * MAX_DIMENSION) / targetWidth;
+        targetWidth = MAX_DIMENSION;
+      } else {
+        targetWidth = (targetWidth * MAX_DIMENSION) / targetHeight;
+        targetHeight = MAX_DIMENSION;
+      }
+    }
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
     const context = canvas.getContext('2d');
     if (!context) {
       return null;
     }
 
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(video, 0, 0, targetWidth, targetHeight);
     return canvas.toDataURL('image/jpeg', 0.8);
   }, [isReady]);
 

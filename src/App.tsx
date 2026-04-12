@@ -388,14 +388,12 @@ export default function App() {
     const message = cameraError || t('camera_unavail', currentLanguage);
     setStatus(message);
     await speak(message);
-    setTimeout(() => setCurrentPage('home'), 1000);
   }, [cameraError, currentLanguage, speak]);
 
   const handleCaptureUnavailable = useCallback(async () => {
     const message = t('camera_not_ready', currentLanguage) || 'Camera is warming up, please try again.';
     setStatus(message);
     await speak(message);
-    setTimeout(() => setCurrentPage('home'), 1500);
   }, [currentLanguage, speak]);
 
   const handleDescribeScene = async () => {
