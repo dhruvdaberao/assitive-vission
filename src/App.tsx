@@ -238,6 +238,7 @@ export default function App() {
     const runPageLogic = async () => {
       if (currentPage === 'navigate') {
         setDestination('');
+        setStatus('');
         try {
           const dest = await speakAndListen(t('nav_prompt', currentLanguage), 3);
           if (isActive && dest) {
@@ -253,6 +254,7 @@ export default function App() {
         }
       } else if (currentPage === 'find') {
         setTargetObject('');
+        setStatus('');
         try {
           const obj = await speakAndListen(t('find_prompt', currentLanguage), 2);
           if (isActive && obj) {
@@ -749,7 +751,7 @@ export default function App() {
 
         {currentPage === 'find' && (
           <motion.div key="find" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
-            {renderHeader('Find Object')}
+            {renderHeader(t('btn_find', currentLanguage) || 'Find Object')}
             <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${isDarkMode ? 'bg-[#0A192F]' : 'bg-[#E3F2FD]'}`}>
               {stream ? <VideoPreview stream={stream} className="w-full h-full absolute inset-0 text-center" /> : <p className="text-[#0D47A1] dark:text-[#E3F2FD] text-lg font-medium opacity-70">Camera Off</p>}
               <CameraOverlayActions
