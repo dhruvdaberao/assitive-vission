@@ -1046,13 +1046,16 @@ export default function App() {
                   <div className="mb-6">
                     <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cphone_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <div className="flex">
-                        <span className={`inline-flex items-center px-3 rounded-l-lg border border-r-0 ${inputClass}`}>+91</span>
-                        <input type="tel" placeholder="10-digit number" maxLength={10} value={emergencyData.contactPhone.replace(/^\+91/, '')} onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setEmergencyData({ ...emergencyData, contactPhone: val ? '+91' + val : '' });
-                        }} className={`w-full p-3 rounded-r-lg border ${inputClass}`} />
-                      </div>
+                      <input 
+                        type="tel" 
+                        placeholder="e.g. +91 98765 43210" 
+                        value={emergencyData.contactPhone} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^\d\s\-\+]/g, '');
+                          setEmergencyData({ ...emergencyData, contactPhone: val });
+                        }} 
+                        className={`w-full p-3 rounded-lg border ${inputClass}`} 
+                      />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactPhone}</p>
                     )}
