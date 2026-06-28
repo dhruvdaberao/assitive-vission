@@ -118,7 +118,9 @@ export function useSpeech() {
           resolve();
         };
 
-        window.speechSynthesis.speak(utterance);
+        setTimeout(() => {
+          window.speechSynthesis.speak(utterance);
+        }, 250);
       }),
     [updateState],
   );
