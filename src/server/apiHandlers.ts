@@ -116,7 +116,7 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: [
         {
           inlineData: {
@@ -124,7 +124,7 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
             mimeType: parsedImage.mimeType,
           },
         },
-        prompt.trim(),
+        { text: prompt.trim() },
       ],
       config: {
         systemInstruction:
