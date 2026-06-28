@@ -566,7 +566,7 @@ export function useCamera() {
     // Image Downscaling (max 1024px while maintaining aspect ratio)
     let targetWidth = video.videoWidth;
     let targetHeight = video.videoHeight;
-    const MAX_DIMENSION = 1024;
+    const MAX_DIMENSION = 512;
 
     if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
       if (targetWidth > targetHeight) {
@@ -587,7 +587,7 @@ export function useCamera() {
     }
 
     context.drawImage(video, 0, 0, targetWidth, targetHeight);
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.5);
   }, [stage]);
 
   const switchCamera = useCallback(async () => {

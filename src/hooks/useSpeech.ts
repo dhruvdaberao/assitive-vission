@@ -254,7 +254,7 @@ export function useSpeech() {
             recognition.abort();
             reject('no-speech');
           }
-        }, 5000);
+        }, 15000);
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
