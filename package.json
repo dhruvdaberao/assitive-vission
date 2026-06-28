@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite-node server.ts",
-    "dev:host": "vite-node server.ts",
-    "start": "vite-node server.ts",
+    "dev": "vite-node --watch server.ts",
+    "dev:host": "vite-node --watch server.ts",
+    "start": "vite-node --watch server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
