@@ -109,85 +109,44 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
     }
 
     const { image, prompt } = body;
-    const parsedImage = typeof image === 'string' ? parseImagePayload(image) : null;
-    if (!parsedImage || !prompt?.trim()) {
+    if (!image || !prompt) {
       return { status: 400, body: { error: 'Image and prompt are required.', code: 'VISION_BAD_REQUEST' } };
     }
+    
+    // Extract base64 correctly whether it has data URL prefix or not
+    const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const payload = {
-      systemInstruction: {
-        parts: [{ text: 'You are an AI assistant for a visually impaired user. Keep your responses extremely concise, calm, and clear. Use short sentences. Prioritize safety and immediate obstacles.' }]
-      },
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
       contents: [
         {
-          role: 'user',
-          parts: [
-            {
-              inlineData: {
-                data: parsedImage.data,
-                mimeType: parsedImage.mimeType,
-              },
-            },
-            { text: prompt.trim() },
-          ],
-        }
+          inlineData: {
+            data: base64Data,
+            mimeType: 'image/jpeg',
+          },
+        },
+        prompt,
       ],
-      generationConfig: {
+      config: {
+        systemInstruction:
+          'You are an AI assistant for a visually impaired user. Keep your responses extremely concise, calm, and clear. Use short sentences. Prioritize safety and immediate obstacles.',
         temperature: 0.4,
       },
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      throw { status: response.status, message: errBody?.error?.message || `Gemini API returned ${response.status}` };
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    
     return {
       status: 200,
-      body: { text: text || "I couldn't analyze the scene." },
+      body: { text: response.text || "I couldn't analyze the scene." },
     };
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error(`[Vision:${requestId}] Gemini API Error:`, error);
-    const err = error as { status?: number; message?: string };
-    if (
-      err.status === 401 ||
-      err.status === 403 ||
-      err.message?.toLowerCase().includes('api key') ||
-      err.message?.toLowerCase().includes('permission')
-    ) {
-      return {
-        status: 401,
-        body: {
-          error: 'Vision API key invalid or missing.',
-          details: err.message || 'Gemini rejected the request credentials.',
-          code: 'VISION_AUTH_ERROR',
-          requestId,
-        },
-      };
+    if (error?.status === 429 || error?.message?.includes('429')) {
+      return { status: 429, body: { error: 'Vision service rate limit exceeded.' } };
     }
-    if (err.status === 429 || err.message?.includes('429')) {
-      return { status: 429, body: { error: 'Vision service rate limit exceeded.', code: 'VISION_RATE_LIMIT', requestId } };
-    }
-
-    return {
-      status: err.status || 500,
-      body: {
-        error: 'Vision service temporarily unavailable.',
-        details: err.message || 'Unknown vision error.',
-        code: 'VISION_UPSTREAM_ERROR',
-        requestId,
-      },
-    };
+    return { status: 500, body: { error: 'Vision service temporarily unavailable.' } };
   }
 }
 
@@ -203,18 +162,11 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
     }
 
     if (!apiKey) {
-      console.error(`[TTS:${requestId}] SARVAM_API_KEY missing.`);
-      return {
-        status: 503,
-        body: {
-          error: 'TTS service is not configured.',
-          code: 'TTS_CONFIG_MISSING',
-        },
-      };
+      return { status: 503, body: { error: 'SARVAM_API_KEY is missing. Use browser TTS fallback.', code: 'TTS_CONFIG_MISSING' } };
     }
 
-    const payloadV1 = {
-      text,
+    const payload = {
+      inputs: [text],
       target_language_code: resolvedLanguage,
       speaker: 'meera',
       pitch: 0,
@@ -225,11 +177,6 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
       model: 'bulbul:v1',
     };
 
-    const payloadV2 = {
-      inputs: [text],
-      ...payloadV1,
-    };
-
     const attempts: TtsVendorAttempt[] = [
       {
         name: 'bearer-v1',
@@ -238,7 +185,7 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        payload: payloadV1,
+        payload
       },
       {
         name: 'legacy-subscription',
@@ -247,7 +194,7 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
           'Content-Type': 'application/json',
           'api-subscription-key': apiKey,
         },
-        payload: payloadV2,
+        payload
       },
     ];
 
