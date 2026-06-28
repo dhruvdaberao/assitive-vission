@@ -102,7 +102,7 @@ export default function App() {
   const [status, setStatus] = useState(t('status_ready', 'English'));
   const [processing, setProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
-  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isAppLoading, setIsAppLoading] = useState(false);
   const isDarkMode = false; // Add toggle later if needed
 
   useEffect(() => {
