@@ -682,6 +682,27 @@ export default function App() {
     );
   }
 
+  const handleSendLocation = async () => {
+    if (!navigator.geolocation) {
+      void speak("Location not supported");
+      return;
+    }
+    void speak("Sending live location via WhatsApp");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const msg = encodeURIComponent(`🚨 EMERGENCY ALERT 🚨\nI am in an emergency situation, please help! This is my live location: https://www.google.com/maps?q=${lat},${lng}`);
+        const phone = emergencyData.contactPhone.replace(/\D/g, '');
+        const waUrl = `https://wa.me/${phone}?text=${msg}`;
+        window.open(waUrl, '_blank');
+        void speak("Location opened in WhatsApp");
+      } catch (e) {
+        void speak("Failed to send location");
+      }
+    }, () => void speak("Failed to get location"));
+  };
+
   return (
     <div className={`min-h-screen font-sans flex flex-col pt-16 transition-colors duration-300 ${bgClass}`}>
       <video ref={videoRef} className="fixed top-[-2000px] left-[-2000px] w-10 h-10 pointer-events-none" autoPlay playsInline muted />
@@ -719,8 +740,9 @@ export default function App() {
                 <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-                <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 border-red-700 text-white" />
+                <AccessibleButton icon={<MapIcon size={36} />} label={t('btn_location', currentLanguage) || 'Send Location'} onActivate={handleSendLocation} speak={speak} color="bg-green-600 border-green-700 text-white" />
+                <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Info size={36} />} label={t('btn_about', currentLanguage)} onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<HelpCircle size={36} />} label={t('btn_how_to_use', currentLanguage)} onActivate={() => { setCurrentPage('how-to-use'); }} speak={speak} color={cardClass} />
               </div>
@@ -1071,30 +1093,11 @@ export default function App() {
                         {t('emergency_call_btn', currentLanguage)} {emergencyData.contactName}
                       </a>
                       <button
-                        onClick={async () => {
-                          if (!navigator.geolocation) {
-                            void speak("Location not supported");
-                            return;
-                          }
-                          void speak("Sending live location via WhatsApp");
-                          navigator.geolocation.getCurrentPosition(async (pos) => {
-                            try {
-                              const lat = pos.coords.latitude;
-                              const lng = pos.coords.longitude;
-                              const msg = encodeURIComponent(`🚨 EMERGENCY ALERT 🚨\nI am in an emergency situation, please help! This is my live location: https://www.google.com/maps?q=${lat},${lng}`);
-                              const phone = emergencyData.contactPhone.replace(/\D/g, '');
-                              const waUrl = `https://wa.me/${phone}?text=${msg}`;
-                              window.open(waUrl, '_blank');
-                              void speak("Location opened in WhatsApp");
-                            } catch (e) {
-                              void speak("Failed to send location");
-                            }
-                          }, () => void speak("Failed to get location"));
-                        }}
+                        onClick={handleSendLocation}
                         className="flex items-center w-full justify-center p-5 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
                       >
                         <MapIcon className="mr-3" size={28} />
-                        Send Live Location
+                        {t('btn_location', currentLanguage) || 'Send Location'}
                       </button>
                     </>
                   )}

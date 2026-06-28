@@ -392,6 +392,23 @@ export const translations: Record<string, Partial<Record<LanguageCode, string>>>
         Bodo: "बिथोनफोर",
         Urdu: "اجازتیں"
     },
+    btn_location: {
+        English: "Send Location",
+        Hindi: "लोकेशन भेजें",
+        Marathi: "स्थान पाठवा",
+        Tamil: "இருப்பிடத்தை அனுப்பு",
+        Telugu: "స్థానం పంపండి",
+        Bengali: "অবস্থান পাঠান",
+        Gujarati: "સ્થાન મોકલો",
+        Kannada: "ಸ್ಥಳ ಕಳುಹಿಸಿ",
+        Malayalam: "ലൊക്കേഷൻ അയയ്ക്കുക",
+        Punjabi: "ਟਿਕਾਣਾ ਭੇਜੋ",
+        Odia: "ସ୍ଥାନ ପଠାନ୍ତୁ",
+        Assamese: "অৱস্থান পঠাওক",
+        Manipuri: "মফম থাগৎলকউ",
+        Bodo: "जायगा हर",
+        Urdu: "مقام بھیجیں"
+    },
     btn_emergency: {
         English: "Emergency Info",
         Hindi: "आपातकालीन जानकारी",
