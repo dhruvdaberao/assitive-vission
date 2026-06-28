@@ -103,6 +103,15 @@ export function useSpeech() {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = langCode;
         utterance.rate = 0.9;
+        
+        const voices = window.speechSynthesis.getVoices();
+        let targetVoice = voices.find(v => v.lang.replace('_', '-') === langCode);
+        if (!targetVoice) {
+          targetVoice = voices.find(v => v.lang.toLowerCase().startsWith(langCode.split('-')[0].toLowerCase()));
+        }
+        if (targetVoice) {
+          utterance.voice = targetVoice;
+        }
 
         utterance.onend = () => {
           if (stateRef.current === 'SPEAKING') {
