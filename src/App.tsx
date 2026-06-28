@@ -1074,22 +1074,13 @@ export default function App() {
                           void speak("Sending live location via WhatsApp");
                           navigator.geolocation.getCurrentPosition(async (pos) => {
                             try {
-                              const response = await fetch('/api/send-whatsapp', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  type: 'emergency',
-                                  userName: emergencyData.name,
-                                  notifyNumbers: [emergencyData.contactPhone],
-                                  currentLat: pos.coords.latitude,
-                                  currentLng: pos.coords.longitude
-                                }),
-                              });
-                              if (response.ok) {
-                                void speak("Location sent successfully");
-                              } else {
-                                void speak("Failed to send location");
-                              }
+                              const lat = pos.coords.latitude;
+                              const lng = pos.coords.longitude;
+                              const msg = encodeURIComponent(`🚨 EMERGENCY ALERT 🚨\nI am in an emergency situation, please help! This is my live location: https://www.google.com/maps?q=${lat},${lng}`);
+                              const phone = emergencyData.contactPhone.replace(/\D/g, '');
+                              const waUrl = `https://wa.me/${phone}?text=${msg}`;
+                              window.open(waUrl, '_blank');
+                              void speak("Location opened in WhatsApp");
                             } catch (e) {
                               void speak("Failed to send location");
                             }
