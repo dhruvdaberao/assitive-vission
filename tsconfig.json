@@ -10,6 +10,7 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    "types": ["vite/client", "dom-speech-recognition"],
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -22,5 +23,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["node_modules", "dist", "_old_working_repo"]
 }

@@ -170,7 +170,7 @@ function mapCameraError(error: unknown): CameraIssue {
       return buildCameraIssue('camera-busy', detail);
     case 'OverconstrainedError':
     case 'ConstraintNotSatisfiedError':
-      return buildCameraIssue('constraints-error', err?.constraint ? \`\${detail} (constraint: \${err.constraint})\` : detail);
+      return buildCameraIssue('constraints-error', err?.constraint ? `${detail} (constraint: ${err.constraint})` : detail);
     default:
       return buildCameraIssue('stream-start-failed', detail);
   }
@@ -264,7 +264,7 @@ export function useCamera() {
         .map((device, index) => ({
           deviceId: device.deviceId,
           groupId: device.groupId,
-          label: device.label || \`Camera \${index + 1}\`,
+          label: device.label || `Camera ${index + 1}`,
         }));
       setDevices(videoInputs);
       logCamera('Enumerated video devices', videoInputs);

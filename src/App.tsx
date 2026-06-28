@@ -419,18 +419,12 @@ export default function App() {
         : (t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.');
     setStatus(message);
     await speak(message);
-<<<<<<< HEAD
-  }, [cameraError, currentLanguage, speak]);
-=======
   }, [cameraIssue, cameraRequesting, currentLanguage, speak]);
->>>>>>> 6cc2743f361cedb9f43882f76b9b46128a517b6c
 
   const handleCaptureUnavailable = useCallback(async () => {
     const message = cameraIssue?.message || t('camera_not_ready', currentLanguage) || 'Camera is still loading. Please try again.';
     setStatus(message);
     await speak(message);
-<<<<<<< HEAD
-=======
   }, [cameraIssue, currentLanguage, speak]);
 
   const analyzeProvidedImage = useCallback(async (image: string, prompt: string) => {
@@ -453,7 +447,6 @@ export default function App() {
     } finally {
       setProcessing(false);
     }
->>>>>>> 6cc2743f361cedb9f43882f76b9b46128a517b6c
   }, [currentLanguage, speak]);
 
   const handleUploadFallback = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
