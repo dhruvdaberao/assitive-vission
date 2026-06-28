@@ -39,6 +39,7 @@ export type VoiceState = 'IDLE' | 'SPEAKING' | 'LISTENING' | 'PROCESSING';
 export function useSpeech() {
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE');
   const [transcript, setTranscript] = useState('');
+  const [speakingText, setSpeakingText] = useState('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const stateRef = useRef<VoiceState>('IDLE');
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -85,6 +86,7 @@ export function useSpeech() {
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
     releaseAudioResources();
+    setSpeakingText('');
     if (stateRef.current === 'SPEAKING') {
       updateState('IDLE');
     }
@@ -160,6 +162,7 @@ export function useSpeech() {
     stopListening();
     stopSpeaking();
     updateState('SPEAKING');
+    setSpeakingText(text);
 
     const currentLang = localStorage.getItem('appLanguage') || 'English';
     const langCode = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
@@ -324,9 +327,10 @@ export function useSpeech() {
     stopSpeaking,
     stopListening,
     isListening: voiceState === 'LISTENING',
-    isSpeaking: voiceState === 'SPEAKING',
+    isSpeaking: voiceState === 'SPEAKING' || voiceState === 'PROCESSING',
     voiceState,
     transcript,
+    speakingText,
   };
 }
 

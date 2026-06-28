@@ -22,7 +22,7 @@ type ParsedImage = {
 };
 
 type WhatsAppRequestBody = {
-  type?: 'reached' | 'left';
+  type?: 'reached' | 'left' | 'emergency';
   userName?: string;
   destinationName?: string;
   notifyNumbers?: string[];
@@ -321,8 +321,12 @@ export async function handleWhatsAppRequest(body: WhatsAppRequestBody): Promise<
     let baseMessage = '';
     if (type === 'reached') {
       baseMessage = `User ${userName || 'User'} has reached ${destinationName}.`;
-    } else {
+    } else if (type === 'left') {
       baseMessage = `User ${userName || 'User'} is out of ${destinationName} and is on the way.`;
+    } else if (type === 'emergency') {
+      baseMessage = `🚨 EMERGENCY ALERT 🚨\nUser ${userName || 'User'} needs urgent help!`;
+    } else {
+      baseMessage = `Update from ${userName || 'User'}.`;
     }
 
     if (currentLat && currentLng) {

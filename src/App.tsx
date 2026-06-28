@@ -97,7 +97,7 @@ export default function App() {
     permissionState: cameraPermissionState,
     diagnostics: cameraDiagnostics,
   } = useCamera();
-  const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking } = useSpeech();
+  const { speak, listen, speakAndListen, stopSpeaking, stopListening, isListening, isSpeaking, speakingText } = useSpeech();
 
   const [currentLanguage, setCurrentLanguage] = useState(() => localStorage.getItem('appLanguage') || 'English');
   const [status, setStatus] = useState(t('status_ready', 'English'));
@@ -119,13 +119,23 @@ export default function App() {
 
   // Emergency feature states
   const [isEditingEmergency, setIsEditingEmergency] = useState(false);
-  const [emergencyData, setEmergencyData] = useState({
-    name: '',
-    age: '',
-    bloodType: '',
-    contactName: '',
-    contactPhone: ''
+  const [emergencyData, setEmergencyData] = useState(() => {
+    try {
+      const stored = localStorage.getItem('emergencyData');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {
+      name: '',
+      age: '',
+      bloodType: '',
+      contactName: '',
+      contactPhone: ''
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('emergencyData', JSON.stringify(emergencyData));
+  }, [emergencyData]);
 
   // Notify feature states
   const [notifyNumbers, setNotifyNumbers] = useState<string[]>([]);
@@ -767,7 +777,6 @@ export default function App() {
                 <AccessibleButton icon={<Eye size={36} />} label={t('btn_describe', currentLanguage)} onActivate={() => { setCurrentPage('describe'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Banknote size={36} />} label={t('btn_currency', currentLanguage)} onActivate={() => { setCurrentPage('currency'); }} speak={speak} disabled={processing} color={cardClass} />
                 <AccessibleButton icon={<Languages size={36} />} label={t('btn_language', currentLanguage)} onActivate={() => { setCurrentPage('language'); }} speak={speak} color={cardClass} />
-                <AccessibleButton icon={<Bell size={36} />} label={t('btn_notify', currentLanguage) || "Notify Area"} onActivate={() => { setCurrentPage('notify'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<Shield size={36} />} label={t('btn_permissions', currentLanguage)} onActivate={() => { setCurrentPage('permissions'); }} speak={speak} color={cardClass} />
                 <AccessibleButton icon={<HeartPulse size={36} />} label={t('btn_emergency', currentLanguage)} onActivate={() => { setCurrentPage('emergency'); }} speak={speak} color="bg-red-600 border-red-700 text-white" />
                 <AccessibleButton icon={<Info size={36} />} label={t('btn_about', currentLanguage)} onActivate={() => { setCurrentPage('about'); }} speak={speak} color={cardClass} />
@@ -1092,13 +1101,50 @@ export default function App() {
                   </div>
 
                   {!isEditingEmergency && (
-                    <a
-                      href={`tel:${emergencyData.contactPhone}`}
-                      className="flex items-center justify-center p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
-                    >
-                      <PhoneCall className="mr-3" size={28} />
-                      {t('emergency_call_btn', currentLanguage)} {emergencyData.contactName}
-                    </a>
+                    <>
+                      <a
+                        href={`tel:${emergencyData.contactPhone}`}
+                        className="flex items-center justify-center p-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg mb-4"
+                      >
+                        <PhoneCall className="mr-3" size={28} />
+                        {t('emergency_call_btn', currentLanguage)} {emergencyData.contactName}
+                      </a>
+                      <button
+                        onClick={async () => {
+                          if (!navigator.geolocation) {
+                            void speak("Location not supported");
+                            return;
+                          }
+                          void speak("Sending live location via WhatsApp");
+                          navigator.geolocation.getCurrentPosition(async (pos) => {
+                            try {
+                              const response = await fetch('/api/send-whatsapp', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  type: 'emergency',
+                                  userName: emergencyData.name,
+                                  notifyNumbers: [emergencyData.contactPhone],
+                                  currentLat: pos.coords.latitude,
+                                  currentLng: pos.coords.longitude
+                                }),
+                              });
+                              if (response.ok) {
+                                void speak("Location sent successfully");
+                              } else {
+                                void speak("Failed to send location");
+                              }
+                            } catch (e) {
+                              void speak("Failed to send location");
+                            }
+                          }, () => void speak("Failed to get location"));
+                        }}
+                        className="flex items-center w-full justify-center p-5 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold text-xl transition-colors shadow-lg"
+                      >
+                        <MapIcon className="mr-3" size={28} />
+                        Send Live Location
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1162,13 +1208,13 @@ export default function App() {
           <motion.div key="about" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(t('page_about_title', currentLanguage))}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              <AccessibleCard speak={speak} textToSpeak={t('page_about_overview_text', currentLanguage) || ''} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_overview', currentLanguage)}</h2>
                 <p className="text-lg leading-relaxed opacity-90">
                   {t('page_about_overview_text', currentLanguage)}
                 </p>
-              </div>
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              </AccessibleCard>
+              <AccessibleCard speak={speak} textToSpeak={[1,2,3,4,5,6].map(i => t(`page_about_feature_${i}`, currentLanguage)).join('. ')} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_features', currentLanguage)}</h2>
                 <ul className="list-disc pl-5 space-y-2 text-lg opacity-90">
                   <li>{t('page_about_feature_1', currentLanguage)}</li>
@@ -1178,13 +1224,13 @@ export default function App() {
                   <li>{t('page_about_feature_5', currentLanguage)}</li>
                   <li>{t('page_about_feature_6', currentLanguage)}</li>
                 </ul>
-              </div>
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              </AccessibleCard>
+              <AccessibleCard speak={speak} textToSpeak={t('page_about_mission_text', currentLanguage) || ''} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-2xl font-bold mb-3 text-[#1E88E5] dark:text-[#42A5F5]">{t('page_about_mission', currentLanguage)}</h2>
                 <p className="text-lg leading-relaxed font-medium italic opacity-90">
                   {t('page_about_mission_text', currentLanguage)}
                 </p>
-              </div>
+              </AccessibleCard>
             </div>
           </motion.div>
         )}
@@ -1193,33 +1239,45 @@ export default function App() {
           <motion.div key="how-to-use" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex-1 flex flex-col">
             {renderHeader(t('page_htu_title', currentLanguage))}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              <AccessibleCard speak={speak} textToSpeak={t('page_htu_scene_text', currentLanguage) || ''} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Eye size={24} /> {t('page_htu_scene', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
                   {t('page_htu_scene_text', currentLanguage)}
                 </p>
-              </div>
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              </AccessibleCard>
+              <AccessibleCard speak={speak} textToSpeak={t('page_htu_nav_text', currentLanguage) || ''} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><MapIcon size={24} /> {t('page_htu_nav', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
                   {t('page_htu_nav_text', currentLanguage)}
                 </p>
-              </div>
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              </AccessibleCard>
+              <AccessibleCard speak={speak} textToSpeak={(t('page_htu_notify_text_1', currentLanguage) || '') + ' ' + (t('page_htu_notify_text_2', currentLanguage) || '') + ' ' + (t('page_htu_notify_text_3', currentLanguage) || '')} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#1E88E5] dark:text-[#42A5F5]"><Bell size={24} /> {t('page_htu_notify', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
                   {t('page_htu_notify_text_1', currentLanguage)}<br />
                   {t('page_htu_notify_text_2', currentLanguage)}<br />
                   {t('page_htu_notify_text_3', currentLanguage)}
                 </p>
-              </div>
-              <div className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
+              </AccessibleCard>
+              <AccessibleCard speak={speak} textToSpeak={t('page_htu_sos_text', currentLanguage) || ''} className={`p-6 rounded-2xl shadow-sm ${cardClass}`}>
                 <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-red-500"><HeartPulse size={24} /> {t('page_htu_sos', currentLanguage)}</h2>
                 <p className="text-base leading-relaxed opacity-90">
                   {t('page_htu_sos_text', currentLanguage)}
                 </p>
-              </div>
+              </AccessibleCard>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {speakingText && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 left-4 right-4 bg-black/80 text-white p-4 rounded-xl shadow-2xl z-50 text-center pointer-events-none"
+          >
+            <p className="text-lg font-medium">{speakingText}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1323,6 +1381,18 @@ function AccessibleButton({ icon, label, onActivate, speak, disabled, color = "b
       <div className="mb-3 pointer-events-none">{icon}</div>
       <span className="text-lg font-semibold tracking-tight pointer-events-none">{label}</span>
     </motion.button>
+  );
+}
+
+function AccessibleCard({ children, textToSpeak, speak, className = '' }: { children: React.ReactNode, textToSpeak: string, speak: (text: string) => void, className?: string }) {
+  const handleTap = useAccessibleButton("Double tap to listen to this content", () => void speak(textToSpeak), speak);
+  return (
+    <div
+      onClick={handleTap}
+      className={`touch-manipulation cursor-pointer ${className}`}
+    >
+      {children}
+    </div>
   );
 }
 
