@@ -7,7 +7,7 @@ import {
   handleTtsRequest,
   handleVisionRequest,
   handleWhatsAppRequest,
-} from './src/server/apiHandlers.ts';
+} from './src/server/apiHandlers.js';
 
 async function startServer() {
   const app = express();

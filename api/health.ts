@@ -1,4 +1,4 @@
-import { getHealthStatus } from '../src/server/apiHandlers.ts';
+import { getHealthStatus } from '../src/server/apiHandlers.js';
 
 export const config = {
   runtime: 'nodejs',

@@ -1,4 +1,4 @@
-import { handleTtsRequest } from '../src/server/apiHandlers.ts';
+import { handleTtsRequest } from '../src/server/apiHandlers.js';
 
 export const config = {
   runtime: 'nodejs',

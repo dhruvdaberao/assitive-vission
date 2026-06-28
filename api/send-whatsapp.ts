@@ -1,4 +1,4 @@
-import { handleWhatsAppRequest } from '../src/server/apiHandlers.ts';
+import { handleWhatsAppRequest } from '../src/server/apiHandlers.js';
 
 export const config = {
   runtime: 'nodejs',
