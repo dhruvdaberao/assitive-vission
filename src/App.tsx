@@ -145,6 +145,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [isLocationSaved, setIsLocationSaved] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const isCameraFeaturePage = ['navigate', 'find', 'describe', 'currency'].includes(currentPage);
 
   // Proactive permissions on first launch
