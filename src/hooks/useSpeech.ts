@@ -108,6 +108,7 @@ export function useSpeech() {
           if (stateRef.current === 'SPEAKING') {
             updateState('IDLE');
           }
+          setSpeakingText('');
           resolve();
         };
 
@@ -153,6 +154,7 @@ export function useSpeech() {
           if (stateRef.current === 'SPEAKING') {
             updateState('IDLE');
           }
+          setSpeakingText('');
           resolve();
         };
 
@@ -219,6 +221,8 @@ export function useSpeech() {
       if (error.name === 'AbortError') return;
       console.warn('Backend TTS unavailable, using browser speech fallback:', error);
       await fallbackSpeak(text, langCode);
+    } finally {
+      setSpeakingText('');
     }
   }, [fallbackSpeak, playBase64Audio, stopListening, stopSpeaking, updateState]);
 
