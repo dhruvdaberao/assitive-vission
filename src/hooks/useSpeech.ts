@@ -44,6 +44,7 @@ export function useSpeech() {
   const stateRef = useRef<VoiceState>('IDLE');
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const updateState = useCallback((newState: VoiceState) => {
     stateRef.current = newState;
@@ -84,6 +85,10 @@ export function useSpeech() {
   }, [updateState]);
 
   const stopSpeaking = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     window.speechSynthesis.cancel();
     releaseAudioResources();
     setSpeakingText('');
@@ -164,6 +169,9 @@ export function useSpeech() {
     updateState('SPEAKING');
     setSpeakingText(text);
 
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     const currentLang = localStorage.getItem('appLanguage') || 'English';
     const langCode = LANGUAGE_CONFIG[currentLang as keyof typeof LANGUAGE_CONFIG]?.code || 'en-IN';
 
@@ -176,6 +184,7 @@ export function useSpeech() {
           language: langCode,
           targetLanguageCode: langCode,
         }),
+        signal: abortController.signal
       });
 
       if (!response.ok) {
@@ -204,7 +213,8 @@ export function useSpeech() {
       }
 
       await playBase64Audio(base64Audio);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.warn('Backend TTS unavailable, using browser speech fallback:', error);
       await fallbackSpeak(text, langCode);
     }

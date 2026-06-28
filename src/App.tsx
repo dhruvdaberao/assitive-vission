@@ -12,8 +12,7 @@ import { Search, Eye, Map as MapIcon, Languages, Mic, Banknote, ArrowLeft, Shiel
 import { motion, AnimatePresence } from 'motion/react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { QRCodeSVG } from 'qrcode.react';
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "./firebase";
+
 
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -146,60 +145,30 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
   const [isLocationSaved, setIsLocationSaved] = useState(false);
-  const [isFirebaseEnabled, setIsFirebaseEnabled] = useState(Boolean(db));
-  const uploadInputRef = useRef<HTMLInputElement>(null);
   const isCameraFeaturePage = ['navigate', 'find', 'describe', 'currency'].includes(currentPage);
 
-  // --- FIRESTORE HYDRATION & DEBOUNCED SYNC ---
+  // Proactive permissions on first launch
   useEffect(() => {
-    const initializeApp = async () => {
-      if (!db) {
-        setIsAppLoading(false);
-        return;
-      }
-
+    const askPermissions = async () => {
+      if (localStorage.getItem('permissionsAsked')) return;
+      
       try {
-        let uid = localStorage.getItem('echo_user_id');
-        if (!uid) {
-          uid = crypto.randomUUID();
-          localStorage.setItem('echo_user_id', uid);
+        if (navigator.mediaDevices?.getUserMedia) {
+          await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then(stream => stream.getTracks().forEach(t => t.stop())).catch(() => {});
         }
-
-        const docRef = doc(db, "users", uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.settings?.language) setCurrentLanguage(data.settings.language);
-          if (data.settings?.notifyName) setNotifyName(data.settings.notifyName);
-          if (data.settings?.sandboxCode) setSandboxCode(data.settings.sandboxCode);
-          if (data.medicalInfo) setEmergencyData(data.medicalInfo);
-          if (data.guardianNumbers) setNotifyNumbers(data.guardianNumbers);
-        } else {
-          // Document does not exist, initialize it with safe defaults
-          await setDoc(docRef, {
-            guardianNumbers: [],
-            medicalInfo: { name: '', age: '', bloodType: '', contactName: '', contactPhone: '' },
-            settings: {
-              language: 'English',
-              notifyName: '',
-              sandboxCode: ''
-            }
-          });
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(() => {}, () => {});
         }
-      } catch (error) {
-        console.error("Failed to load user data from Firebase:", error);
-        const errMessage = error instanceof Error ? error.message : String(error);
-        if (errMessage.includes('ERR_BLOCKED_BY_CLIENT')) {
-          console.warn('Firestore calls are blocked by browser extensions. Running without cloud sync.');
-          setIsFirebaseEnabled(false);
-        }
-      } finally {
-        setIsAppLoading(false);
+        localStorage.setItem('permissionsAsked', 'true');
+      } catch (e) {
+        console.warn('Initial permissions request failed', e);
       }
     };
-    initializeApp();
+    
+    setTimeout(askPermissions, 3000);
   }, []);
+
+  // Removed Firebase hydration
 
   const handleSearchLocation = async () => {
     if (!searchQuery.trim() || isLocationSaved) return;
@@ -221,37 +190,7 @@ export default function App() {
     }
   };
 
-  // Persist Notify & App Details to Firebase (Debounced)
-  useEffect(() => {
-    if (!isAppLoading && db && isFirebaseEnabled) {
-      const timeout = setTimeout(async () => {
-        try {
-          const uid = localStorage.getItem('echo_user_id');
-          if (uid) {
-            const userRef = doc(db, "users", uid);
-            await setDoc(userRef, {
-              guardianNumbers: notifyNumbers,
-              medicalInfo: emergencyData,
-              settings: {
-                language: currentLanguage,
-                notifyName: notifyName,
-                sandboxCode: sandboxCode
-              }
-            }, { merge: true });
-          }
-        } catch (e) {
-          console.error("Firebase sync error", e);
-          const errMessage = e instanceof Error ? e.message : String(e);
-          if (errMessage.includes('ERR_BLOCKED_BY_CLIENT')) {
-            console.warn('Disabling Firestore sync because requests are blocked by client.');
-            setIsFirebaseEnabled(false);
-          }
-        }
-      }, 1000);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [notifyNumbers, notifyName, sandboxCode, emergencyData, currentLanguage, isAppLoading, isFirebaseEnabled]);
+  // Removed Firebase debounced sync
 
   // Persist local-only map coordinates (non-sensitive)
   useEffect(() => {
@@ -1270,7 +1209,7 @@ export default function App() {
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {speakingText && (
+        {speakingText === t('welcome_message', currentLanguage) && (
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}

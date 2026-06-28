@@ -114,9 +114,11 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       return { status: 400, body: { error: 'Image and prompt are required.', code: 'VISION_BAD_REQUEST' } };
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const payload = {
+      systemInstruction: {
+        parts: [{ text: 'You are an AI assistant for a visually impaired user. Keep your responses extremely concise, calm, and clear. Use short sentences. Prioritize safety and immediate obstacles.' }]
+      },
       contents: [
         {
           role: 'user',
@@ -131,14 +133,25 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
           ],
         }
       ],
-      config: {
-        systemInstruction:
-          'You are an AI assistant for a visually impaired user. Keep your responses extremely concise, calm, and clear. Use short sentences. Prioritize safety and immediate obstacles.',
+      generationConfig: {
         temperature: 0.4,
       },
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
-    const text = response.text?.trim();
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw { status: response.status, message: errBody?.error?.message || `Gemini API returned ${response.status}` };
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    
     return {
       status: 200,
       body: { text: text || "I couldn't analyze the scene." },
