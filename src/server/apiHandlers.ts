@@ -337,13 +337,13 @@ export async function handleWhatsAppRequest(body: WhatsAppRequestBody): Promise<
     } else if (type === 'left') {
       baseMessage = `User ${userName || 'User'} is out of ${destinationName} and is on the way.`;
     } else if (type === 'emergency') {
-      baseMessage = `🚨 EMERGENCY ALERT 🚨\nUser ${userName || 'User'} needs urgent help!`;
+      baseMessage = `🚨 EMERGENCY ALERT 🚨\nI AM IN EMERGENCY SITUATION THIS IS MY LIVE LOCATION AND THE LOCATION LINK OF GOOGLE MAPS`;
     } else {
       baseMessage = `Update from ${userName || 'User'}.`;
     }
 
     if (currentLat && currentLng) {
-      const mapsLink = `https://www.openstreetmap.org/?mlat=${currentLat}&mlon=${currentLng}`;
+      const mapsLink = `https://www.google.com/maps?q=${currentLat},${currentLng}`;
       baseMessage += `\nLive Location: ${mapsLink}`;
     }
 

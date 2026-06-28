@@ -1005,7 +1005,7 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_age_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.age} onChange={e => setEmergencyData({ ...emergencyData, age: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <input type="text" inputMode="numeric" value={emergencyData.age} onChange={e => setEmergencyData({ ...emergencyData, age: e.target.value.replace(/\D/g, '') })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.age}</p>
                     )}
@@ -1013,7 +1013,17 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_blood_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="text" value={emergencyData.bloodType} onChange={e => setEmergencyData({ ...emergencyData, bloodType: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <select value={emergencyData.bloodType} onChange={e => setEmergencyData({ ...emergencyData, bloodType: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`}>
+                        <option value="">Select</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </select>
                     ) : (
                       <p className="text-xl font-semibold text-red-500">{emergencyData.bloodType}</p>
                     )}
@@ -1033,7 +1043,13 @@ export default function App() {
                   <div className="mb-6">
                     <label className="block text-sm font-medium opacity-70 mb-1">{t('emergency_cphone_label', currentLanguage)}</label>
                     {isEditingEmergency ? (
-                      <input type="tel" value={emergencyData.contactPhone} onChange={e => setEmergencyData({ ...emergencyData, contactPhone: e.target.value })} className={`w-full p-3 rounded-lg border ${inputClass}`} />
+                      <div className="flex">
+                        <span className={`inline-flex items-center px-3 rounded-l-lg border border-r-0 ${inputClass}`}>+91</span>
+                        <input type="tel" placeholder="10-digit number" maxLength={10} value={emergencyData.contactPhone.replace(/^\+91/, '')} onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setEmergencyData({ ...emergencyData, contactPhone: val ? '+91' + val : '' });
+                        }} className={`w-full p-3 rounded-r-lg border ${inputClass}`} />
+                      </div>
                     ) : (
                       <p className="text-xl font-semibold">{emergencyData.contactPhone}</p>
                     )}
