@@ -119,12 +119,17 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
       model: 'gemini-2.0-flash',
       contents: [
         {
-          inlineData: {
-            data: parsedImage.data,
-            mimeType: parsedImage.mimeType,
-          },
-        },
-        { text: prompt.trim() },
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                data: parsedImage.data,
+                mimeType: parsedImage.mimeType,
+              },
+            },
+            { text: prompt.trim() },
+          ],
+        }
       ],
       config: {
         systemInstruction:
@@ -162,7 +167,7 @@ export async function handleVisionRequest(body: VisionRequestBody): Promise<Json
     }
 
     return {
-      status: 500,
+      status: err.status || 500,
       body: {
         error: 'Vision service temporarily unavailable.',
         details: err.message || 'Unknown vision error.',
@@ -273,8 +278,8 @@ export async function handleTtsRequest(body: TtsRequestBody): Promise<JsonResult
     }
 
     return {
-      status: lastStatus,
-      body: { error: 'TTS service error.', details: lastError, code: 'TTS_UPSTREAM_ERROR', requestId },
+      status: lastStatus || 500,
+      body: { error: 'TTS service error', details: lastError, code: 'TTS_UPSTREAM_ERROR', requestId },
     };
   } catch (error: unknown) {
     const message = getErrorMessage(error);
